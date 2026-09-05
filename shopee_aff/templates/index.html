@@ -94,6 +94,7 @@
   }
   html { -webkit-text-size-adjust: 100%; }
   body { background: hsl(var(--background)); color: hsl(var(--foreground)); }
+  [hidden] { display: none !important; }   /* the hidden attribute must beat display utilities (grid, inline-flex) */
   /* Signal identity colours: subtle tint + coloured text (light), translucent tint (dark). */
   .sig-Rocket { --sig: 0 72% 51%;   --sig-text: 0 74% 42%;   --sig-text-dark: 0 91% 71%; }
   .sig-Hidden { --sig: 262 83% 58%; --sig-text: 263 70% 50%; --sig-text-dark: 258 90% 76%; }
@@ -112,7 +113,6 @@
   }
   .sig-dot { background: hsl(var(--sig)); }
   .chip[aria-pressed="true"] { border-color: hsl(var(--sig) / 0.6); background: hsl(var(--sig) / 0.12); color: hsl(var(--sig-fg)); }
-  .stat[aria-pressed="true"] { box-shadow: 0 0 0 2px hsl(var(--sig) / 0.5); border-color: transparent; }
   .spark-tip { pointer-events: none; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .spin { animation: spin 1s linear infinite; }
@@ -136,6 +136,7 @@
     .btn-sm { @apply h-8 px-2.5 text-xs; }
     .btn-icon { @apply h-9 w-9 px-0; }
     .btn-icon.btn-sm { @apply h-8 w-8; }
+    .btn[aria-pressed="true"] { @apply bg-accent text-accent-foreground; }
     .input { @apply flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 tabular-nums; }
     .select-wrap { @apply relative; }
     .select-wrap select { @apply appearance-none pr-8; }
@@ -143,34 +144,36 @@
     .field { @apply flex min-w-0 flex-col gap-1.5; }
     .field > span { @apply text-xs font-medium text-muted-foreground; }
     .card { @apply rounded-lg border bg-card text-card-foreground shadow-sm; }
+    .card-head { @apply flex flex-wrap items-start justify-between gap-3 p-5 pb-3; }
+    .card-title { @apply text-base font-semibold leading-none tracking-tight; }
+    .card-desc { @apply mt-1.5 text-xs text-muted-foreground; }
     .thumb { @apply shrink-0 rounded-md border bg-muted object-cover; }
-    .card-head { @apply flex flex-wrap items-start justify-between gap-3 p-4 pb-2; }
-    .card-title { @apply text-sm font-semibold leading-none tracking-tight; }
-    .card-desc { @apply mt-1 text-xs text-muted-foreground; }
     .badge { @apply inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold leading-4 whitespace-nowrap; }
     .badge-neutral { @apply border-border bg-muted text-muted-foreground; }
     .badge-ok { @apply border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400; }
     .badge-err { @apply border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400; }
+    .badge-count { @apply ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground; }
     .chip { @apply inline-flex h-8 items-center gap-1.5 rounded-full border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background; }
-    .chip .n { @apply rounded-full bg-muted px-1.5 py-px text-[10px] font-semibold tabular-nums text-muted-foreground; }
+    .chip .n { @apply rounded-full bg-muted px-1.5 py-px text-[11px] font-semibold tabular-nums text-muted-foreground; }
     .chip[aria-pressed="true"] .n { @apply bg-background/70 text-inherit; }
     .sig-dot { @apply inline-block h-2 w-2 shrink-0 rounded-full; }
-    .stat { @apply flex min-w-0 flex-col gap-1 rounded-lg border bg-card p-3 text-left shadow-sm transition-colors; }
-    button.stat { @apply hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background; }
-    .stat .lbl { @apply flex items-center gap-1.5 text-xs font-medium text-muted-foreground; }
-    .stat .val { @apply text-2xl font-semibold leading-none tabular-nums tracking-tight; }
-    .stat .sub { @apply text-[11px] text-muted-foreground; }
-    .tbl { @apply w-full min-w-[1180px] caption-bottom text-sm; }
+    .tabs { @apply grid w-full grid-cols-4 items-center rounded-lg bg-muted p-1 text-muted-foreground; }
+    .tab { @apply inline-flex h-8 items-center justify-center whitespace-nowrap rounded-md px-2 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background; }
+    .tab[aria-selected="true"] { @apply bg-background text-foreground shadow-sm; }
+    .menu { @apply absolute right-0 z-20 mt-1 min-w-[10rem] rounded-md border bg-popover p-1 text-popover-foreground shadow-md; }
+    .menu-item { @apply flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:bg-accent; }
+    .tbl { @apply w-full caption-bottom text-sm; }
+    .tbl.wide { @apply min-w-[1240px]; }
     /* child combinators: the expanded-row detail nests a second table that must not inherit these */
-    .tbl > thead > tr > th { @apply h-10 whitespace-nowrap px-2 text-right align-middle text-xs font-medium text-muted-foreground; }
+    .tbl > thead > tr > th { @apply h-11 whitespace-nowrap px-3 text-right align-middle text-xs font-medium text-muted-foreground; }
     .tbl > thead > tr > th.l, .tbl > tbody > tr > td.l { @apply text-left; }
-    .tbl > tbody > tr > td { @apply whitespace-nowrap border-t px-2 py-2 align-middle text-right tabular-nums; }
-    .tbl > thead > tr > th:first-child, .tbl > tbody > tr > td:first-child { @apply pl-4; }
-    .tbl > thead > tr > th:last-child, .tbl > tbody > tr > td:last-child { @apply pr-4; }
+    .tbl > tbody > tr > td { @apply h-12 whitespace-nowrap border-t px-3 py-2 align-middle text-right tabular-nums; }
+    .tbl > thead > tr > th:first-child, .tbl > tbody > tr > td:first-child { @apply pl-5; }
+    .tbl > thead > tr > th:last-child, .tbl > tbody > tr > td:last-child { @apply pr-5; }
     .tbl > tbody > tr[data-id] { @apply cursor-pointer transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:bg-muted/60; }
     .tbl > tbody > tr.expanded { @apply bg-muted/40; }
     .tbl > tbody > tr.detail > td { @apply whitespace-normal bg-muted/30 p-0 text-left; }
-    .detail-inner { @apply sticky left-0 p-4; }
+    .detail-inner { @apply sticky left-0 p-5; }
     .th-btn { @apply -ml-1.5 inline-flex h-8 items-center gap-0.5 rounded-md px-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring; }
     .th-btn svg { @apply h-3.5 w-3.5 opacity-0 transition-opacity; }
     .th-btn:hover svg { @apply opacity-60; }
@@ -184,37 +187,32 @@
     .neg { @apply text-red-700 dark:text-red-400; }
     .muted { @apply text-muted-foreground; }
     .mini { @apply w-full text-xs; }
-    .mini th { @apply h-8 whitespace-nowrap px-2 text-right font-medium text-muted-foreground first:pl-3 last:pr-3; }
+    .mini th { @apply h-9 whitespace-nowrap px-2 text-right font-medium text-muted-foreground first:pl-3 last:pr-3; }
     .mini th.l, .mini td.l { @apply text-left; }
-    .mini td { @apply whitespace-nowrap border-t px-2 py-1.5 text-right tabular-nums first:pl-3 last:pr-3; }
-    .list { @apply divide-y; }
-    .list li { @apply flex items-center gap-3 px-4 py-2 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:bg-muted/60 cursor-pointer; }
-    .list .n { @apply w-4 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground; }
-    .list .t { @apply min-w-0 flex-1; }
-    .list .t b { @apply block truncate font-medium; }
-    .list .t small { @apply mt-0.5 flex items-center gap-1.5 truncate text-[11px] text-muted-foreground; }
-    .list .v { @apply shrink-0 text-right tabular-nums; }
-    .list .v b { @apply block font-semibold; }
-    .list .v small { @apply block text-[11px] font-normal text-muted-foreground; }
-    .pick { @apply flex cursor-pointer flex-col gap-2.5 rounded-lg border bg-card p-3.5 transition-colors hover:border-primary/60 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background text-left; }
-    .pick .head { @apply flex items-start justify-between gap-2; }
-    .pick .head b { @apply min-w-0 flex-1 truncate font-semibold leading-5; }
-    .pick .head { @apply items-center; }
-    .pick ul { @apply flex flex-col gap-1 text-xs text-muted-foreground; }
-    .pick ul li { @apply flex items-start gap-1.5; }
-    .pick ul svg { @apply mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400; }
-    .pick .kpis { @apply mt-auto grid grid-cols-5 gap-2 border-t pt-2.5; }
-    .pick .kpis .lbl { @apply text-[10px] font-medium uppercase tracking-wide text-muted-foreground; }
-    .pick .kpis .val { @apply text-xs font-semibold tabular-nums; }
-    .dl { @apply grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs; }
+    .mini td { @apply whitespace-nowrap border-t px-2 py-2 text-right tabular-nums first:pl-3 last:pr-3; }
+    .list li { @apply flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:bg-muted/60 cursor-pointer; }
+    .list .n { @apply w-4 shrink-0 text-right text-xs tabular-nums text-muted-foreground; }
+    .list .t { @apply min-w-0 flex-1 truncate font-medium; }
+    .list .v { @apply shrink-0 text-right text-sm font-semibold tabular-nums; }
+    .pick { @apply flex cursor-pointer gap-4 rounded-lg border border-border/70 bg-card p-4 text-left transition-colors hover:border-primary/60 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background; }
+    .pick .body { @apply flex min-w-0 flex-1 flex-col gap-1.5; }
+    .pick .head { @apply flex items-center gap-2; }
+    .pick .head b { @apply min-w-0 flex-1 truncate font-semibold; }
+    .pick .why { @apply text-xs leading-5 text-muted-foreground; }
+    .pick .kpis { @apply mt-1.5 grid grid-cols-3 gap-3; }
+    .pick .kpis .val { @apply text-sm font-semibold tabular-nums; }
+    .pick .kpis .lbl { @apply text-xs text-muted-foreground; }
+    .dl { @apply grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-xs; }
     .dl dt { @apply text-muted-foreground; }
     .dl dd { @apply truncate text-right font-medium tabular-nums; }
+    .kv { @apply grid grid-cols-2 gap-3 sm:grid-cols-5; }
+    .kv .lbl { @apply text-xs text-muted-foreground; }
+    .kv .val { @apply text-sm font-semibold tabular-nums; }
     .skel { @apply animate-pulse rounded bg-muted; }
     .empty { @apply flex flex-col items-center justify-center gap-2 px-6 py-14 text-center; }
     .empty svg { @apply h-8 w-8 text-muted-foreground/70; }
     .empty h4 { @apply text-sm font-semibold; }
     .empty p { @apply max-w-sm text-xs text-muted-foreground; }
-    .kbd { @apply rounded border bg-muted px-1 py-px font-mono text-[10px] text-muted-foreground; }
     .overlay { @apply fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-[2px] sm:p-8 dark:bg-black/70; }
     .dialog { @apply w-full rounded-lg border bg-card text-card-foreground shadow-lg; }
     .toast { @apply flex w-80 items-start gap-2.5 rounded-md border bg-card p-3 text-sm shadow-lg; }
@@ -231,10 +229,7 @@
       <span class="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
       </span>
-      <span class="leading-tight">
-        <span class="block text-sm font-semibold tracking-tight">Shopee Affiliate Finder</span>
-        <span class="block text-[11px] text-muted-foreground">Product research</span>
-      </span>
+      <span class="text-sm font-semibold tracking-tight">Shopee Affiliate Finder</span>
     </a>
 
     <div class="ml-auto flex flex-wrap items-center gap-2">
@@ -265,13 +260,13 @@
   </div>
 </header>
 
-<main class="mx-auto flex max-w-[1600px] flex-col gap-5 px-4 py-5 sm:px-6">
+<main class="mx-auto flex max-w-[1600px] flex-col gap-6 px-4 py-6 sm:px-6">
 
-  <!-- ============ Toolbar: title + status ============ -->
+  <!-- ============ Overview: title + one status line ============ -->
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div class="min-w-0">
       <h1 class="text-xl font-semibold tracking-tight">Overview</h1>
-      <p id="status" class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground" aria-live="polite">Loading…</p>
+      <p id="status" class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground" aria-live="polite">Loading…</p>
     </div>
     <button id="homeToggle" class="btn btn-ghost btn-sm text-muted-foreground" aria-expanded="true" aria-controls="home">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
@@ -279,63 +274,63 @@
     </button>
   </div>
 
-  <!-- ============ KPI strip ============ -->
-  <section id="kpis" class="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8" aria-label="Key figures"></section>
-
-  <!-- ============ Home panels ============ -->
-  <section id="home" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4" aria-label="Suggestions and top lists"></section>
+  <!-- ============ Home: suggestions + tabbed top lists ============ -->
+  <section id="home" class="grid grid-cols-1 gap-6 xl:grid-cols-5" aria-label="Suggestions and top lists"></section>
 
   <!-- ============ Products ============ -->
   <section class="card" aria-labelledby="productsTitle">
     <div class="card-head">
       <div>
         <h2 id="productsTitle" class="card-title">Products</h2>
-        <p class="card-desc" id="productsDesc">Filter, sort and export one day's snapshot. Click a row for its rank history.</p>
+        <p class="card-desc" id="productsDesc">Click a row for its rank history.</p>
       </div>
       <div class="flex items-center gap-2">
-        <button id="csv" class="btn btn-outline btn-sm" title="Download the filtered rows as CSV">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-          Export CSV
+        <button id="colsToggle" type="button" class="btn btn-outline btn-sm" aria-pressed="false" title="Show every metric column">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+          More columns
         </button>
-        <button id="json" class="btn btn-outline btn-sm" title="Download the filtered rows as JSON">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-          Export JSON
-        </button>
+        <div class="relative">
+          <button id="exportBtn" type="button" class="btn btn-outline btn-sm" aria-haspopup="menu" aria-expanded="false" aria-controls="exportMenu">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            Export
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-60"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div id="exportMenu" class="menu" role="menu" aria-label="Export" hidden>
+            <button id="csv" type="button" class="menu-item" role="menuitem">Download CSV</button>
+            <button id="json" type="button" class="menu-item" role="menuitem">Download JSON</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center gap-2 px-4 pt-2" role="group" aria-label="Signal filters">
-      <span class="mr-1 text-xs font-medium text-muted-foreground">Signals</span>
-      <div id="chips" class="flex flex-wrap items-center gap-1.5"></div>
-    </div>
-
-    <form class="filters grid grid-cols-2 gap-3 px-4 pb-4 pt-3 md:grid-cols-4 xl:grid-cols-[minmax(150px,1.2fr)_repeat(5,minmax(96px,0.8fr))_minmax(180px,1.6fr)_auto]" onsubmit="return false" aria-label="Filters">
-      <label class="field">
-        <span>Category</span>
-        <span class="select-wrap"><select id="category" class="input"><option value="">All categories</option></select>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
-      </label>
-      <label class="field"><span>Min price</span><input type="number" id="min_price" class="input" step="1" min="0" placeholder="0"></label>
-      <label class="field"><span>Max price</span><input type="number" id="max_price" class="input" step="1" min="0" placeholder="Any"></label>
-      <label class="field"><span>Min commission %</span><input type="number" id="min_commission" class="input" step="0.5" min="0" placeholder="0"></label>
-      <label class="field"><span>Min monthly sales</span><input type="number" id="min_sales" class="input" step="10" min="0" placeholder="0"></label>
-      <label class="field"><span>Min rating</span><input type="number" id="min_rating" class="input" step="0.1" min="0" max="5" placeholder="0"></label>
-      <label class="field col-span-2 md:col-span-2 xl:col-span-1">
-        <span>Search</span>
-        <span class="relative">
+    <form id="filtersForm" class="filters flex flex-col gap-3 px-5 pb-5" onsubmit="return false" aria-label="Filters">
+      <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Signal filters">
+        <span class="mr-1 text-xs font-medium text-muted-foreground">Signals</span>
+        <div id="chips" class="flex flex-wrap items-center gap-1.5"></div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="relative w-full max-w-xs">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input type="text" id="q" class="input pl-8" placeholder="Title or shop name">
+          <input type="text" id="q" class="input pl-8" placeholder="Search title or shop" aria-label="Search title or shop">
         </span>
-      </label>
-      <div class="field col-span-2 md:col-span-2 xl:col-span-1">
-        <span class="hidden xl:block">&nbsp;</span>
-        <div class="flex items-center gap-2">
-          <button id="apply" type="submit" class="btn btn-primary">Apply</button>
-          <button id="reset" type="button" class="btn btn-ghost" title="Clear all filters">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-            Reset
-          </button>
-        </div>
+        <button id="apply" type="submit" class="btn btn-primary">Apply</button>
+        <button id="filtersToggle" type="button" class="btn btn-outline" aria-expanded="false" aria-controls="filtersPanel">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          Filters<span id="filtersCount" class="badge-count" hidden>0</span>
+        </button>
+        <button id="reset" type="button" class="btn btn-ghost text-muted-foreground" title="Clear search, signals and filters">Reset</button>
+      </div>
+      <div id="filtersPanel" class="grid grid-cols-2 gap-4 rounded-lg bg-muted/50 p-4 md:grid-cols-3 xl:grid-cols-6" hidden>
+        <label class="field">
+          <span>Category</span>
+          <span class="select-wrap"><select id="category" class="input"><option value="">All categories</option></select>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+        </label>
+        <label class="field"><span>Min price</span><input type="number" id="min_price" class="input" step="1" min="0" placeholder="0"></label>
+        <label class="field"><span>Max price</span><input type="number" id="max_price" class="input" step="1" min="0" placeholder="Any"></label>
+        <label class="field"><span>Min commission %</span><input type="number" id="min_commission" class="input" step="0.5" min="0" placeholder="0"></label>
+        <label class="field"><span>Min monthly sales</span><input type="number" id="min_sales" class="input" step="10" min="0" placeholder="0"></label>
+        <label class="field"><span>Min rating</span><input type="number" id="min_rating" class="input" step="0.1" min="0" max="5" placeholder="0"></label>
       </div>
     </form>
 
@@ -346,7 +341,7 @@
       </table>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3 text-xs text-muted-foreground">
       <span id="count" aria-live="polite"></span>
       <div class="flex items-center gap-2">
         <span id="page" class="tabular-nums"></span>
@@ -361,10 +356,6 @@
       </div>
     </div>
   </section>
-
-  <footer class="pb-4 text-center text-[11px] text-muted-foreground">
-    Single-user research tool · data from the Shopee Affiliate Open API · <span class="kbd">Esc</span> closes dialogs
-  </footer>
 </main>
 
 <!-- ============ Detail dialog ============ -->
@@ -390,16 +381,24 @@
 const SIGNALS = {{ signals|tojson }};
 const imgSrc = it => (it.image_url && !/\.example\//.test(it.image_url)) ? it.image_url : `/img/placeholder/${it.item_id}.svg`;
 const thumb = (it, cls) => `<img class="thumb ${cls}" src="${esc(imgSrc(it))}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/img/placeholder/${it.item_id}.svg'">`;
+// [key, label, left-aligned, essential]
 const COLS = [
-  ["rank","Rank",false], ["title","Product",true], ["category","Category",true], ["price","Price",false],
-  ["commission_rate","Comm %",false], ["monthly_sales","Sales/mo",false], ["est_monthly_revenue","Est. rev.",false],
-  ["rating","Rating",false], ["partner_count","Creators",false], ["gap_score","Gap",false],
-  ["angel_score","Angel",false], ["rank_velocity","Velocity",false], ["rank_acceleration","Accel",false],
-  ["breakout_score","Breakout",false], ["signal","Signal",false],
+  ["rank","Rank",false,true], ["title","Product",true,true], ["category","Category",true,false], ["price","Price",false,true],
+  ["commission_rate","Comm %",false,true], ["monthly_sales","Sales/mo",false,true], ["est_monthly_revenue","Est. rev.",false,false],
+  ["rating","Rating",false,false], ["partner_count","Creators",false,false], ["gap_score","Gap",false,false],
+  ["angel_score","Angel",false,false], ["rank_velocity","Velocity",false,true], ["rank_acceleration","Accel",false,false],
+  ["breakout_score","Breakout",false,true], ["signal","Signal",false,true],
 ];
 const FILTER_IDS = ["category","min_price","max_price","min_commission","min_sales","min_rating","q"];
-const state = { sort:"breakout_score", order:"desc", limit:100, offset:0, signals:new Set(), meta:null };
+const NUMERIC_FILTERS = ["category","min_price","max_price","min_commission","min_sales","min_rating"];
+const store = {
+  get: (k, d=null) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} },
+};
+const state = { sort:"breakout_score", order:"desc", limit:100, offset:0, signals:new Set(), meta:null,
+                allCols: store.get("moreCols") === "1", home:null, tab: store.get("homeTab", "top_sales"), picksAll:false, suggested:new Map() };
 const $ = id => document.getElementById(id);
+const activeCols = () => COLS.filter(c => state.allCols || c[3]);
 
 // ---------- icons (lucide) ----------
 const ICON = {
@@ -412,14 +411,14 @@ const ICON = {
   sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',
   db: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>',
   filter: '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
-  loader: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
   ok: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
   alert: '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
   chevronRight: '<path d="m9 18 6-6-6-6"/>',
+  chevronDown: '<path d="m6 9 6 6 6-6"/>',
+  chevronUp: '<path d="m18 15-6-6-6 6"/>',
   trend: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
-  layers: '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
   calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
-  tag: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>',
+  trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
 };
 const ic = (name, cls="h-4 w-4") => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${cls}" aria-hidden="true">${ICON[name]}</svg>`;
 
@@ -456,7 +455,7 @@ function toast(msg, kind="ok") {
   setTimeout(() => el.remove(), 6000);
 }
 
-// ---------- meta: date, category, chips, kpis, status ----------
+// ---------- meta: date, category, chips, status ----------
 async function loadMeta(keepDate=false) {
   const d = keepDate ? $("date").value : "";
   const m = await (await fetch("/api/meta" + (d ? "?date="+d : ""))).json();
@@ -464,20 +463,20 @@ async function loadMeta(keepDate=false) {
   $("date").innerHTML = m.dates.length
     ? m.dates.map(x => `<option value="${x}" ${x===m.date?"selected":""}>${x}</option>`).join("")
     : `<option value="">No snapshots</option>`;
-  $("category").innerHTML = `<option value="">All categories (${fmt(m.total??0)})</option>` +
+  const cat = $("category").value;
+  $("category").innerHTML = `<option value="">All categories</option>` +
     m.categories.map(c => `<option value="${esc(c.category)}">${esc(c.category)} (${c.count})</option>`).join("");
+  $("category").value = cat;
   renderChips();
-  renderKpis(m);
   const run = m.runs && m.runs[0];
   if (m.latest) {
     const ok = run && run.status === "ok";
     $("status").innerHTML =
       `<span class="inline-flex items-center gap-1">${ic("calendar","h-3.5 w-3.5")}Snapshot <b class="font-medium text-foreground">${esc(m.date)}</b></span>
-       <span aria-hidden="true">·</span><span>${m.dates.length} snapshot day${m.dates.length===1?"":"s"}</span>
-       <span aria-hidden="true">·</span><span>${fmt(m.total)} items</span>
-       ${run ? `<span aria-hidden="true">·</span><span class="inline-flex items-center gap-1.5">Last run <span class="badge ${ok?"badge-ok":"badge-err"}">${esc(run.status||"?")}</span>
-         <span>${esc(run.snapshot_date||"")} · ${fmt(run.rows_written||0)} rows${run.source==="mock"?" · mock":""}</span></span>` : ""}`;
-    $("productsDesc").textContent = `Snapshot ${m.date} · ${fmt(m.total)} items. Filter, sort and export; click a row for its rank history.`;
+       <span aria-hidden="true">·</span><span><b class="font-medium text-foreground tabular-nums">${fmt(m.total)}</b> items</span>
+       <span aria-hidden="true">·</span><span>${m.dates.length} day${m.dates.length===1?"":"s"} of history</span>
+       ${run ? `<span aria-hidden="true">·</span><span class="inline-flex items-center gap-1.5">Last run <span class="badge ${ok?"badge-ok":"badge-err"}">${esc(run.status||"?")}</span>${run.source==="mock"?`<span class="badge badge-neutral">mock</span>`:""}</span>` : ""}`;
+    $("productsDesc").textContent = `${fmt(m.total)} items on ${m.date}. Click a row for its rank history.`;
   } else {
     $("status").innerHTML = `<span class="inline-flex items-center gap-1.5">${ic("alert","h-3.5 w-3.5")}No data yet — use <b class="font-medium text-foreground">Pull (mock)</b> to try it with synthetic data.</span>`;
     $("productsDesc").textContent = "Nothing ingested yet.";
@@ -492,28 +491,40 @@ function renderChips() {
 }
 function toggleSignal(s) {
   state.signals.has(s) ? state.signals.delete(s) : state.signals.add(s);
-  state.offset = 0; renderChips(); syncKpiState(); load();
-}
-function syncKpiState() {
-  document.querySelectorAll("#kpis .stat[data-s]").forEach(el => el.setAttribute("aria-pressed", String(state.signals.has(el.dataset.s))));
-}
-const KPI_SIGNALS = ["Rocket","Hidden","Rising","Proven","Fading"];
-const SIGNAL_HINT = { Rocket:"Just broke into the top 10", Hidden:"Sells well, few creators", Rising:"Climbing the ranks", Proven:"Consistent seller", Fading:"Losing momentum", Steady:"Holding position", Single:"One day of history" };
-function renderKpis(m) {
-  const tile = (lbl, val, sub, icon) => `<div class="stat"><span class="lbl">${icon?ic(icon,"h-3.5 w-3.5"):""}${lbl}</span><span class="val">${val}</span><span class="sub">${sub}</span></div>`;
-  const sigTile = s => `<button type="button" class="stat sig-${s}" data-s="${s}" aria-pressed="${state.signals.has(s)}" title="Toggle the ${s} filter">
-      <span class="lbl"><span class="sig-dot" aria-hidden="true"></span>${s}</span><span class="val">${fmt(m.signals?.[s]||0)}</span><span class="sub">${SIGNAL_HINT[s]}</span></button>`;
-  $("kpis").innerHTML =
-    tile("Items tracked", fmt(m.total??0), m.date ? `snapshot ${m.date}` : "no snapshot", "layers") +
-    tile("Snapshot days", fmt(m.dates.length), m.dates.length ? `${m.dates[m.dates.length-1]} → ${m.dates[0]}` : "pull data to start", "calendar") +
-    tile("Categories", fmt(m.categories.length), "on this day", "tag") +
-    KPI_SIGNALS.map(sigTile).join("");
-  document.querySelectorAll("#kpis .stat[data-s]").forEach(el => el.onclick = () => toggleSignal(el.dataset.s));
+  state.offset = 0; renderChips(); load();
 }
 
+// ---------- filters disclosure ----------
+function updateFilterCount() {
+  const n = NUMERIC_FILTERS.filter(k => $(k).value !== "").length;
+  $("filtersCount").textContent = n; $("filtersCount").hidden = n === 0;
+  $("filtersToggle").classList.toggle("border-primary/60", n > 0);
+}
+function setFiltersOpen(open) {
+  $("filtersPanel").hidden = !open;
+  $("filtersToggle").setAttribute("aria-expanded", String(open));
+}
+$("filtersToggle").onclick = () => setFiltersOpen($("filtersPanel").hidden);
+NUMERIC_FILTERS.forEach(k => $(k).addEventListener("input", updateFilterCount));
+
+// ---------- export menu ----------
+function setExportOpen(open) { $("exportMenu").hidden = !open; $("exportBtn").setAttribute("aria-expanded", String(open)); }
+$("exportBtn").onclick = () => setExportOpen($("exportMenu").hidden);
+document.addEventListener("click", e => { if (!e.target.closest("#exportBtn, #exportMenu")) setExportOpen(false); });
+
 // ---------- table ----------
+function setCols(all, persist=true) {
+  state.allCols = all;
+  $("colsToggle").setAttribute("aria-pressed", String(all));
+  $("colsToggle").title = all ? "Show only the essential columns" : "Show every metric column";
+  $("tbl").classList.toggle("wide", all);
+  if (persist) store.set("moreCols", all ? "1" : "0");
+}
+$("colsToggle").onclick = () => { setCols(!state.allCols); load(); };
+setCols(state.allCols, false);
+
 function renderHead() {
-  $("head").innerHTML = COLS.map(([k,label,left]) => {
+  $("head").innerHTML = activeCols().map(([k,label,left]) => {
     const active = state.sort === k;
     const icon = active ? (state.order === "desc" ? "arrowDown" : "arrowUp") : "sortNone";
     return `<th scope="col" class="${left?'l':''}" ${active?`aria-sort="${state.order==="desc"?"descending":"ascending"}"`:""}>
@@ -527,12 +538,34 @@ function renderHead() {
   });
 }
 
-const skeletonRows = (n=8) => Array.from({length:n}, () => `<tr aria-hidden="true">${COLS.map(([k,,left]) =>
+const CELL = {
+  rank: it => `<td class="text-muted-foreground">${fmt(it.rank)}</td>`,
+  title: it => `<td class="l max-w-[360px]">
+        <div class="flex items-center gap-3">${thumb(it, "h-9 w-9")}<div class="min-w-0">
+        <div class="truncate font-medium" title="${esc(it.title)}">${it.product_link?`<a class="hover:underline" href="${esc(it.product_link)}" target="_blank" rel="noopener">${esc(it.title)}</a>`:esc(it.title)}</div>
+        <div class="truncate text-xs text-muted-foreground">${esc(it.shop_name||"")}</div>
+        </div></div></td>`,
+  category: it => `<td class="l text-muted-foreground">${esc(it.category||"")}</td>`,
+  price: it => `<td>${fmt(it.price,2)}</td>`,
+  commission_rate: it => `<td>${pct(it.commission_rate)}</td>`,
+  monthly_sales: it => `<td>${fmt(it.monthly_sales)}</td>`,
+  est_monthly_revenue: it => `<td>${fmt(it.est_monthly_revenue)}</td>`,
+  rating: it => `<td>${rating(it.rating)}</td>`,
+  partner_count: it => `<td>${fmt(it.partner_count)}</td>`,
+  gap_score: it => `<td>${fmt(it.gap_score)}</td>`,
+  angel_score: it => `<td>${meter(it.angel_score)}</td>`,
+  rank_velocity: it => `<td>${signed(it.rank_velocity)}</td>`,
+  rank_acceleration: it => `<td>${signed(it.rank_acceleration)}</td>`,
+  breakout_score: it => `<td>${meter(it.breakout_score)}</td>`,
+  signal: it => `<td>${badge(it.signal)}</td>`,
+};
+
+const skeletonRows = (n=8) => Array.from({length:n}, () => `<tr aria-hidden="true">${activeCols().map(([k,,left]) =>
   `<td class="${left?'l':''}"><span class="skel inline-block h-3 ${k==="title"?"w-56":"w-10"}"></span></td>`).join("")}</tr>`).join("");
 
 function emptyState(kind, msg) {
   const noData = kind === "nodata";
-  return `<tr><td colspan="${COLS.length}" class="l whitespace-normal"><div class="empty">
+  return `<tr><td colspan="${activeCols().length}" class="l whitespace-normal"><div class="empty">
     ${ic(noData ? "db" : "filter", "h-8 w-8")}
     <h4>${noData ? "No snapshots yet" : "No products match these filters"}</h4>
     <p>${noData ? "Pull (mock) ingests a synthetic day of data so you can try the dashboard; Pull (live) needs Shopee credentials in .env." : esc(msg || "Try widening the price range, lowering the minimums, or clearing the signal filter.")}</p>
@@ -541,7 +574,7 @@ function emptyState(kind, msg) {
 }
 
 async function load() {
-  renderHead();
+  renderHead(); updateFilterCount();
   $("tblWrap").setAttribute("aria-busy", "true");
   if (!$("body").querySelector("tr[data-id]")) $("body").innerHTML = skeletonRows();
   let r;
@@ -555,35 +588,14 @@ async function load() {
     return;
   }
   const data = await r.json();
-  $("body").innerHTML = data.items.map(it => `
-    <tr data-id="${it.item_id}" tabindex="0" aria-expanded="false">
-      <td class="text-muted-foreground">${fmt(it.rank)}</td>
-      <td class="l max-w-[300px]">
-        <div class="flex items-center gap-2.5">${thumb(it, "h-9 w-9")}<div class="min-w-0">
-        <div class="truncate font-medium" title="${esc(it.title)}">${it.product_link?`<a class="hover:underline" href="${esc(it.product_link)}" target="_blank" rel="noopener">${esc(it.title)}</a>`:esc(it.title)}</div>
-        <div class="truncate text-[11px] text-muted-foreground">${esc(it.shop_name||"")}</div>
-        </div></div>
-      </td>
-      <td class="l text-muted-foreground">${esc(it.category||"")}</td>
-      <td>${fmt(it.price,2)}</td>
-      <td>${pct(it.commission_rate)}</td>
-      <td>${fmt(it.monthly_sales)}</td>
-      <td>${fmt(it.est_monthly_revenue)}</td>
-      <td>${rating(it.rating)}</td>
-      <td>${fmt(it.partner_count)}</td>
-      <td>${fmt(it.gap_score)}</td>
-      <td>${meter(it.angel_score)}</td>
-      <td>${signed(it.rank_velocity)}</td>
-      <td>${signed(it.rank_acceleration)}</td>
-      <td>${meter(it.breakout_score)}</td>
-      <td>${badge(it.signal)}</td>
-    </tr>`).join("") || emptyState("nomatch");
+  const cols = activeCols();
+  $("body").innerHTML = data.items.map(it => `<tr data-id="${it.item_id}" tabindex="0" aria-expanded="false">${cols.map(([k]) => CELL[k](it)).join("")}</tr>`).join("") || emptyState("nomatch");
   document.querySelectorAll("tr[data-id]").forEach(tr => {
     tr.onclick = e => { if (!e.target.closest("a")) toggleDetail(tr); };
     tr.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target === tr) { e.preventDefault(); toggleDetail(tr); } };
   });
   const from = data.total ? data.offset+1 : 0, to = Math.min(data.offset+data.limit, data.total);
-  $("count").innerHTML = `Showing <b class="font-medium text-foreground tabular-nums">${fmt(from)}–${fmt(to)}</b> of <b class="font-medium text-foreground tabular-nums">${fmt(data.total)}</b> · ${esc(data.date)}`;
+  $("count").innerHTML = `Showing <b class="font-medium text-foreground tabular-nums">${fmt(from)}–${fmt(to)}</b> of <b class="font-medium text-foreground tabular-nums">${fmt(data.total)}</b>`;
   $("page").textContent = `Page ${Math.floor(data.offset/data.limit)+1} of ${Math.max(1,Math.ceil(data.total/data.limit))}`;
   $("prev").disabled = data.offset === 0; $("next").disabled = to >= data.total;
 }
@@ -606,11 +618,11 @@ function sparkline(hist) {
       <path d="${line}" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
       <line class="cross" x1="0" x2="0" y1="${PT}" y2="${H-PB}" stroke="hsl(var(--muted-foreground))" stroke-dasharray="3 3" style="display:none"/>
       ${pts.map((h,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(h.rank).toFixed(1)}" r="${i===last?4:2.5}" fill="${i===last?"hsl(var(--primary))":"hsl(var(--card))"}" stroke="hsl(var(--primary))" stroke-width="${i===last?2:1.5}"><title>${h.snapshot_date}: rank #${h.rank}</title></circle>`).join("")}
-      <text x="${PX}" y="${H-4}" font-size="9" fill="hsl(var(--muted-foreground))">${pts[0].snapshot_date.slice(5)}</text>
-      <text x="${W-PX}" y="${H-4}" font-size="9" text-anchor="end" fill="hsl(var(--muted-foreground))">${pts[last].snapshot_date.slice(5)}</text>
+      <text x="${PX}" y="${H-4}" font-size="10" fill="hsl(var(--muted-foreground))">${pts[0].snapshot_date.slice(5)}</text>
+      <text x="${W-PX}" y="${H-4}" font-size="10" text-anchor="end" fill="hsl(var(--muted-foreground))">${pts[last].snapshot_date.slice(5)}</text>
     </svg>
-    <div class="spark-tip absolute top-0 hidden rounded-md border bg-popover px-2 py-1 text-[11px] shadow-md tabular-nums"></div>
-    <div class="mt-1 flex items-center justify-between gap-2 whitespace-nowrap text-[11px] text-muted-foreground"><span>Rank · up is better</span><span>best <b class="font-medium text-foreground">#${lo}</b> · worst <b class="font-medium text-foreground">#${hi}</b></span></div>
+    <div class="spark-tip absolute top-0 hidden rounded-md border bg-popover px-2 py-1 text-xs shadow-md tabular-nums"></div>
+    <div class="mt-1.5 flex items-center justify-between gap-2 whitespace-nowrap text-xs text-muted-foreground"><span>Rank · up is better</span><span>best <b class="font-medium text-foreground">#${lo}</b> · worst <b class="font-medium text-foreground">#${hi}</b></span></div>
   </div>`;
 }
 function bindSparks(root) {
@@ -635,14 +647,32 @@ function bindSparks(root) {
   });
 }
 
+// "Why it's suggested": reasons/score come from the /api/home payload, kept in a lookup map (the item endpoint has none).
+function whySuggested(it) {
+  const s = state.suggested.get(String(it.item_id));
+  if (!s) return "";
+  return `<div class="rounded-lg border border-primary/30 bg-primary/5 p-4">
+    <div class="flex items-center gap-2 text-sm font-semibold">${ic("sparkles","h-4 w-4 text-primary")}Why it's suggested
+      <span class="ml-auto text-xs font-medium text-muted-foreground">Score <b class="text-sm font-semibold text-primary tabular-nums">${fmt(s.suggest_score)}</b></span></div>
+    <ul class="mt-2.5 flex flex-col gap-1.5 text-sm">${(s.reasons||[]).map(x=>`<li class="flex items-start gap-2">${ic("check","mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400")}<span>${esc(x)}</span></li>`).join("")}</ul>
+    <div class="kv mt-4">
+      <div><div class="lbl">Rank</div><div class="val">#${fmt(s.rank)}</div></div>
+      <div><div class="lbl">Price</div><div class="val">${fmt(s.price,2)}</div></div>
+      <div><div class="lbl">Sales/mo</div><div class="val">${fmt(s.monthly_sales)}</div></div>
+      <div><div class="lbl">Commission</div><div class="val">${pct(s.commission_rate)}</div></div>
+      <div><div class="lbl">Creators</div><div class="val">${fmt(s.partner_count)}</div></div>
+    </div>
+  </div>`;
+}
+
 function detailHtml(d) {
   const it = d.item;
   const link = (href, label) => href ? `<a class="btn btn-outline btn-sm" href="${esc(href)}" target="_blank" rel="noopener">${label}${ic("ext","h-3.5 w-3.5")}</a>` : "";
-  return `<div class="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
-    <div class="flex min-w-0 flex-col gap-3">
+  return `<div class="grid gap-5 md:grid-cols-[280px_minmax(0,1fr)]">
+    <div class="flex min-w-0 flex-col gap-4">
       <div class="overflow-hidden rounded-lg border bg-muted"><img class="aspect-square w-full object-cover" src="${esc(imgSrc(it))}" alt="${esc(it.title)}" onerror="this.onerror=null;this.src='/img/placeholder/${it.item_id}.svg'"></div>
-      <div class="rounded-lg border bg-card p-3">${sparkline(d.history)}</div>
-      <dl class="dl rounded-lg border bg-card p-3">
+      <div class="rounded-lg border bg-card p-4">${sparkline(d.history)}</div>
+      <dl class="dl rounded-lg border bg-card p-4">
         <dt>Item ID</dt><dd>${esc(it.item_id)}</dd>
         <dt>Shop</dt><dd title="${esc(it.shop_name||it.shop_id||"")}">${esc(it.shop_name||it.shop_id||"–")}</dd>
         <dt>Category</dt><dd>${esc(it.category||"–")}</dd>
@@ -654,9 +684,12 @@ function detailHtml(d) {
       </dl>
       ${(it.product_link||it.offer_link) ? `<div class="flex flex-wrap gap-2">${link(it.product_link,"Product page")}${link(it.offer_link,"Affiliate link")}</div>` : ""}
     </div>
-    <div class="min-w-0 overflow-x-auto rounded-lg border bg-card">
-      <table class="mini min-w-[640px]"><thead><tr><th class="l">Date</th><th>Rank</th><th>Price</th><th>Comm %</th><th>Mo. sales</th><th>Rating</th><th>Velocity</th><th>Accel</th><th>Angel</th><th>Breakout</th><th>Signal</th></tr></thead>
-      <tbody>${d.history.slice().reverse().map(h=>`<tr><td class="l text-muted-foreground">${esc(h.snapshot_date)}</td><td class="font-medium">${fmt(h.rank)}</td><td>${fmt(h.price,2)}</td><td>${pct(h.commission_rate)}</td><td>${fmt(h.monthly_sales)}</td><td>${rating(h.rating)}</td><td>${signed(h.rank_velocity)}</td><td>${signed(h.rank_acceleration)}</td><td>${fmt(h.angel_score)}</td><td>${fmt(h.breakout_score)}</td><td>${badge(h.signal)}</td></tr>`).join("")}</tbody></table>
+    <div class="flex min-w-0 flex-col gap-4">
+      ${whySuggested(it)}
+      <div class="min-w-0 overflow-x-auto rounded-lg border bg-card">
+        <table class="mini min-w-[640px]"><thead><tr><th class="l">Date</th><th>Rank</th><th>Price</th><th>Comm %</th><th>Sales/mo</th><th>Rating</th><th>Velocity</th><th>Accel</th><th>Angel</th><th>Breakout</th><th>Signal</th></tr></thead>
+        <tbody>${d.history.slice().reverse().map(h=>`<tr><td class="l text-muted-foreground">${esc(h.snapshot_date)}</td><td class="font-medium">${fmt(h.rank)}</td><td>${fmt(h.price,2)}</td><td>${pct(h.commission_rate)}</td><td>${fmt(h.monthly_sales)}</td><td>${rating(h.rating)}</td><td>${signed(h.rank_velocity)}</td><td>${signed(h.rank_acceleration)}</td><td>${fmt(h.angel_score)}</td><td>${fmt(h.breakout_score)}</td><td>${badge(h.signal)}</td></tr>`).join("")}</tbody></table>
+      </div>
     </div>
   </div>`;
 }
@@ -666,7 +699,7 @@ async function toggleDetail(tr) {
   if (next && next.classList.contains("detail")) { next.remove(); tr.classList.remove("expanded"); tr.setAttribute("aria-expanded","false"); return; }
   const d = await (await fetch("/api/products/"+tr.dataset.id)).json();
   const row = document.createElement("tr"); row.className = "detail";
-  row.innerHTML = `<td colspan="${COLS.length}"><div class="detail-inner">${detailHtml(d)}</div></td>`;
+  row.innerHTML = `<td colspan="${activeCols().length}"><div class="detail-inner">${detailHtml(d)}</div></td>`;
   tr.after(row); tr.classList.add("expanded"); tr.setAttribute("aria-expanded","true");
   sizeDetails(); bindSparks(row);
 }
@@ -688,14 +721,14 @@ async function openModal(itemId) {
   const d = await (await fetch("/api/products/"+itemId)).json();
   lastFocus = document.activeElement;
   $("modalBox").innerHTML = `
-    <div class="flex items-start gap-3 border-b p-4">
+    <div class="flex items-start gap-3 border-b p-5">
       <div class="min-w-0 flex-1">
         <h3 id="modalTitle" class="flex flex-wrap items-center gap-2 text-base font-semibold leading-6"><span class="min-w-0 truncate">${esc(d.item.title)}</span>${badge(d.item.signal)}</h3>
-        <p class="mt-0.5 text-xs text-muted-foreground">Rank <b class="font-medium text-foreground tabular-nums">#${fmt(d.item.rank)}</b> · ${fmt(d.item.monthly_sales)} sales/mo · ${pct(d.item.commission_rate)} commission · price ${fmt(d.item.price,2)} · ${esc(d.item.shop_name||"")}</p>
+        <p class="mt-1 text-xs text-muted-foreground">Rank <b class="font-medium text-foreground tabular-nums">#${fmt(d.item.rank)}</b> · ${fmt(d.item.monthly_sales)} sales/mo · ${pct(d.item.commission_rate)} commission · price ${fmt(d.item.price,2)} · ${esc(d.item.shop_name||"")}</p>
       </div>
       <button id="modalClose" class="btn btn-ghost btn-icon btn-sm -mr-1 -mt-1" aria-label="Close">${ic("x")}</button>
     </div>
-    <div class="p-4">${detailHtml(d)}</div>`;
+    <div class="p-5">${detailHtml(d)}</div>`;
   $("modal").dataset.open = "1";
   $("modalClose").onclick = closeModal;
   $("modalClose").focus();
@@ -719,63 +752,103 @@ function settleConfirm(v) {
 $("confirmCancel").onclick = () => settleConfirm(false);
 $("confirmOk").onclick = () => settleConfirm(true);
 $("confirm").onclick = e => { if (e.target.id === "confirm") settleConfirm(false); };
-document.addEventListener("keydown", e => { if (e.key === "Escape") { closeModal(); settleConfirm(false); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeModal(); settleConfirm(false); setExportOpen(false); } });
 
-// ---------- home ----------
-function listPanel(title, sub, items, valueFn, sortKey, icon) {
-  const rows = items.map((it, i) => `<li data-id="${it.item_id}" tabindex="0" role="button">
-      <span class="n">${i+1}</span>
-      ${thumb(it, "h-8 w-8")}
-      <span class="t"><b title="${esc(it.title)}">${esc(it.title)}</b><small><span class="truncate">${esc(it.category||"")} · #${fmt(it.rank)}</span>${badge(it.signal, "px-1.5 py-0 text-[10px]")}</small></span>
-      <span class="v">${valueFn(it)}</span></li>`).join("") || `<li class="cursor-default justify-center py-8 text-xs text-muted-foreground hover:bg-transparent">No data for this day</li>`;
-  return `<div class="card flex min-w-0 flex-col">
-    <div class="card-head items-center pb-3"><div><h3 class="card-title flex items-center gap-1.5">${ic(icon,"h-3.5 w-3.5 text-muted-foreground")}${title}</h3><p class="card-desc">${sub}</p></div>
-      ${sortKey?`<button type="button" class="btn btn-ghost btn-sm -mr-2 text-primary" data-sort="${sortKey}">View all${ic("chevronRight","h-3.5 w-3.5")}</button>`:""}</div>
-    <ol class="list border-t">${rows}</ol></div>`;
+// ---------- home: suggestions + tabbed top lists ----------
+const PICKS_DEFAULT = 6, LIST_ROWS = 8;
+// [key in /api/home, tab label, description, sort key for "View all", value renderer]
+const TABS = [
+  ["top_sales", "Sales", "Most sales — units sold per month", "monthly_sales", it => fmt(it.monthly_sales)],
+  ["top_commission", "Commission", "Highest commission rate, among items with sales", "commission_rate", it => pct(it.commission_rate)],
+  ["top_revenue", "Revenue", "Biggest revenue pool — price × commission × sales per month", "est_monthly_revenue", it => compact(it.est_monthly_revenue)],
+  ["movers", "Climbers", "Fastest climbers — rank places gained over the last window", "rank_velocity", it => signed(it.rank_velocity)],
+];
+
+function renderPicks() {
+  const h = state.home, all = h.suggestions, shown = state.picksAll ? all : all.slice(0, PICKS_DEFAULT);
+  const cards = shown.map(it => `<div class="pick" data-id="${it.item_id}" tabindex="0" role="button">
+      ${thumb(it, "h-16 w-16")}
+      <div class="body">
+        <div class="head"><b title="${esc(it.title)}">${esc(it.title)}</b>${badge(it.signal)}</div>
+        <div class="why">${esc(it.reasons[0] || "")}</div>
+        <div class="kpis">
+          <div><div class="val">${fmt(it.monthly_sales)}</div><div class="lbl">Sales/mo</div></div>
+          <div><div class="val">${pct(it.commission_rate)}</div><div class="lbl">Comm %</div></div>
+          <div><div class="val text-primary">${fmt(it.suggest_score)}</div><div class="lbl">Score</div></div>
+        </div>
+      </div>
+    </div>`).join("") || `<div class="empty sm:col-span-2">${ic("sparkles")}<h4>Nothing to suggest yet</h4><p>Suggestions need at least two days of snapshots so velocity and breakout can be scored.</p></div>`;
+  const more = all.length - PICKS_DEFAULT;
+  $("picks").innerHTML = cards;
+  $("picksMore").hidden = more <= 0;
+  $("picksMore").innerHTML = state.picksAll ? `Show fewer${ic("chevronUp","h-4 w-4")}` : `Show ${more} more${ic("chevronDown","h-4 w-4")}`;
+  $("picksMore").setAttribute("aria-expanded", String(state.picksAll));
+  bindHomeItems($("picks"));
 }
-const homeSkeleton = () => `<div class="card md:col-span-2 xl:col-span-4 p-4"><span class="skel block h-4 w-40"></span><div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">${Array(4).fill(`<span class="skel block h-28"></span>`).join("")}</div></div>` +
-  Array(4).fill(`<div class="card p-4"><span class="skel block h-4 w-32"></span>${Array(6).fill(`<span class="skel mt-3 block h-3"></span>`).join("")}</div>`).join("");
+
+function renderTopList() {
+  const h = state.home, tab = TABS.find(t => t[0] === state.tab) || TABS[0];
+  const [key, label, desc, sortKey, valueFn] = tab;
+  const items = (h[key] || []).slice(0, LIST_ROWS);
+  document.querySelectorAll("#homeTabs .tab").forEach(b => { const on = b.dataset.tab === key; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; });
+  $("topDesc").textContent = key === "movers" && !items.length ? "Needs more than one day of history" : desc;
+  $("topList").innerHTML = items.map((it, i) => `<li data-id="${it.item_id}" tabindex="0" role="button">
+      <span class="n">${i+1}</span>${thumb(it, "h-10 w-10")}
+      <span class="t" title="${esc(it.title)}">${esc(it.title)}</span>${badge(it.signal)}
+      <span class="v">${valueFn(it)}</span></li>`).join("") || `<li class="cursor-default justify-center py-10 text-xs text-muted-foreground hover:bg-transparent">No data for this day</li>`;
+  $("viewAll").dataset.sort = sortKey; $("viewAll").setAttribute("aria-label", `View all products sorted by ${label.toLowerCase()}`);
+  bindHomeItems($("topList"));
+}
+
+function bindHomeItems(root) {
+  root.querySelectorAll("[data-id]").forEach(el => {
+    el.onclick = e => { if (!e.target.closest("a")) openModal(el.dataset.id); };
+    el.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); openModal(el.dataset.id); } };
+  });
+}
+
+const homeSkeleton = () => `<div class="card xl:col-span-3 p-5"><span class="skel block h-4 w-40"></span><div class="mt-5 grid gap-4 md:grid-cols-2">${Array(6).fill(`<span class="skel block h-24"></span>`).join("")}</div></div>
+  <div class="card xl:col-span-2 p-5"><span class="skel block h-4 w-32"></span><span class="skel mt-4 block h-9"></span>${Array(8).fill(`<span class="skel mt-3 block h-8"></span>`).join("")}</div>`;
 
 async function loadHome() {
   const d = $("date").value;
   if (!$("home").children.length) $("home").innerHTML = homeSkeleton();
   const r = await fetch("/api/home" + (d ? "?date="+d : ""));
   if (!r.ok) {
-    $("home").innerHTML = `<div class="card md:col-span-2 xl:col-span-4"><div class="empty">${ic("db")}<h4>No snapshots yet</h4><p>Pull (mock) to try the dashboard with a synthetic day of data. Suggestions and top lists appear here once a snapshot exists.</p><button type="button" class="btn btn-outline btn-sm mt-2" onclick="pull(true)">Pull (mock)</button></div></div>`;
+    state.home = null; state.suggested = new Map();
+    $("home").innerHTML = `<div class="card xl:col-span-5"><div class="empty">${ic("db")}<h4>No snapshots yet</h4><p>Pull (mock) to try the dashboard with a synthetic day of data. Suggestions and top lists appear here once a snapshot exists.</p><button type="button" class="btn btn-outline btn-sm mt-2" onclick="pull(true)">Pull (mock)</button></div></div>`;
     return;
   }
   const h = await r.json();
-  const picks = h.suggestions.map(it => `<div class="pick" data-id="${it.item_id}" tabindex="0" role="button">
-      <div class="head">${thumb(it, "h-11 w-11")}<b title="${esc(it.title)}">${esc(it.title)}</b>${badge(it.signal)}</div>
-      <ul>${it.reasons.map(x=>`<li>${ic("check")}<span>${esc(x)}</span></li>`).join("")}</ul>
-      <div class="kpis">
-        <div><div class="lbl">Rank</div><div class="val">#${fmt(it.rank)}</div></div>
-        <div><div class="lbl">Sales/mo</div><div class="val">${compact(it.monthly_sales)}</div></div>
-        <div><div class="lbl">Comm</div><div class="val">${pct(it.commission_rate)}</div></div>
-        <div><div class="lbl">Price</div><div class="val">${compact(it.price)}</div></div>
-        <div><div class="lbl">Score</div><div class="val text-primary">${fmt(it.suggest_score)}</div></div>
-      </div>
-    </div>`).join("") || `<div class="empty md:col-span-2 xl:col-span-4">${ic("sparkles")}<h4>Nothing to suggest yet</h4><p>Suggestions need at least two days of snapshots so velocity and breakout can be scored.</p></div>`;
-  $("home").innerHTML =
-    `<div class="card md:col-span-2 xl:col-span-4">
-      <div class="card-head items-center"><div><h3 class="card-title flex items-center gap-1.5">${ic("sparkles","h-3.5 w-3.5 text-primary")}Suggested for you</h3>
-        <p class="card-desc">Angel + breakout score with a signal bonus; Fading items are excluded. Click a card for its history.</p></div>
-        <span class="badge badge-neutral">${h.suggestions.length} picks</span></div>
-      <div class="grid gap-3 p-4 pt-2 md:grid-cols-2 xl:grid-cols-4">${picks}</div>
-    </div>` +
-    listPanel("Most sales", "Monthly units", h.top_sales, it => `<b>${fmt(it.monthly_sales)}</b><small>${pct(it.commission_rate)} comm</small>`, "monthly_sales", "trend") +
-    listPanel("Highest commission", "Among items with sales", h.top_commission, it => `<b>${pct(it.commission_rate)}</b><small>${fmt(it.monthly_sales)} sales</small>`, "commission_rate", "tag") +
-    listPanel("Biggest revenue pool", "Price × commission × sales", h.top_revenue, it => `<b>${compact(it.est_monthly_revenue)}</b><small>${pct(it.commission_rate)} · ${compact(it.monthly_sales)} sales</small>`, "est_monthly_revenue", "layers") +
-    listPanel("Fastest climbers", h.movers.length ? "Rank change over the last window" : "Needs more history", h.movers, it => `<b>${signed(it.rank_velocity)}</b><small>now #${fmt(it.rank)}</small>`, "rank_velocity", "arrowUp");
-  document.querySelectorAll("#home [data-id]").forEach(el => {
-    el.onclick = e => { if (!e.target.closest("a")) openModal(el.dataset.id); };
-    el.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); openModal(el.dataset.id); } };
-  });
-  document.querySelectorAll("#home [data-sort]").forEach(a => a.onclick = () => {
-    state.sort = a.dataset.sort; state.order = "desc"; state.offset = 0; state.signals.clear();
-    if (a.dataset.sort === "commission_rate") $("min_sales").value = 1;
-    loadMeta(true).then(load); $("tbl").scrollIntoView({behavior:"smooth", block:"start"});
-  });
+  state.home = h; state.picksAll = false;
+  state.suggested = new Map(h.suggestions.map(s => [String(s.item_id), s]));
+  $("home").innerHTML = `
+    <div class="card flex flex-col xl:col-span-3">
+      <div class="card-head"><div><h3 class="card-title flex items-center gap-2">${ic("sparkles","h-4 w-4 text-primary")}Suggested for you</h3>
+        <p class="card-desc">Best angel + breakout scores today. Open a card to see why.</p></div></div>
+      <div id="picks" class="grid gap-4 p-5 pt-2 md:grid-cols-2"></div>
+      <div class="flex justify-center px-5 pb-4"><button id="picksMore" type="button" class="btn btn-ghost btn-sm text-muted-foreground" aria-controls="picks"></button></div>
+    </div>
+    <div class="card flex flex-col xl:col-span-2">
+      <div class="card-head items-center pb-4"><div><h3 class="card-title flex items-center gap-2">${ic("trophy","h-4 w-4 text-muted-foreground")}Top today</h3>
+        <p class="card-desc" id="topDesc"></p></div>
+        <button id="viewAll" type="button" class="btn btn-ghost btn-sm -mr-2 text-primary">View all${ic("chevronRight","h-3.5 w-3.5")}</button></div>
+      <div class="px-5"><div id="homeTabs" class="tabs" role="tablist" aria-label="Top lists">${TABS.map(([k,l]) => `<button type="button" role="tab" class="tab" data-tab="${k}" aria-selected="false">${l}</button>`).join("")}</div></div>
+      <ol id="topList" class="list flex flex-col gap-0.5 p-3 pt-2"></ol>
+    </div>`;
+  $("picksMore").onclick = () => { state.picksAll = !state.picksAll; renderPicks(); };
+  document.querySelectorAll("#homeTabs .tab").forEach(b => b.onclick = () => { state.tab = b.dataset.tab; store.set("homeTab", state.tab); renderTopList(); });
+  $("homeTabs").onkeydown = e => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const i = TABS.findIndex(t => t[0] === state.tab), n = (i + (e.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
+    state.tab = TABS[n][0]; store.set("homeTab", state.tab); renderTopList(); document.querySelector(`#homeTabs .tab[data-tab="${state.tab}"]`).focus();
+  };
+  $("viewAll").onclick = () => {
+    state.sort = $("viewAll").dataset.sort; state.order = "desc"; state.offset = 0; state.signals.clear();
+    if (state.sort === "commission_rate") { $("min_sales").value = 1; setFiltersOpen(true); }
+    loadMeta(true).then(load); $("productsTitle").scrollIntoView({behavior:"smooth", block:"start"});
+  };
+  renderPicks(); renderTopList();
 }
 
 // ---------- home toggle (remembered) ----------
@@ -783,10 +856,10 @@ function setHomeHidden(hidden, persist=true) {
   $("home").classList.toggle("hidden", hidden);
   $("homeToggle").setAttribute("aria-expanded", String(!hidden));
   $("homeToggleText").textContent = hidden ? "Show home panels" : "Hide home panels";
-  if (persist) try { localStorage.setItem("homeHidden", hidden ? "1" : "0"); } catch (e) {}
+  if (persist) store.set("homeHidden", hidden ? "1" : "0");
 }
 $("homeToggle").onclick = () => setHomeHidden(!$("home").classList.contains("hidden"));
-try { if (localStorage.getItem("homeHidden") === "1") setHomeHidden(true, false); } catch (e) {}
+if (store.get("homeHidden") === "1") setHomeHidden(true, false);
 
 // ---------- theme ----------
 function applyTheme(dark) {
@@ -797,11 +870,10 @@ function applyTheme(dark) {
 applyTheme(document.documentElement.classList.contains("dark"));
 $("themeToggle").onclick = () => {
   const dark = !document.documentElement.classList.contains("dark");
-  applyTheme(dark);
-  try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch (e) {}
+  applyTheme(dark); store.set("theme", dark ? "dark" : "light");
 };
 try {
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => { try { if (!localStorage.getItem("theme")) applyTheme(e.matches); } catch (_) {} });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => { if (!store.get("theme")) applyTheme(e.matches); });
 } catch (e) {}
 
 // ---------- actions ----------
@@ -822,8 +894,8 @@ $("reset").onclick = () => { for (const k of FILTER_IDS) $(k).value=""; state.si
 $("date").onchange = () => { state.offset = 0; loadMeta(true).then(load); loadHome(); };
 $("prev").onclick = () => { state.offset = Math.max(0, state.offset - state.limit); load(); };
 $("next").onclick = () => { state.offset += state.limit; load(); };
-$("csv").onclick = () => window.open("/api/export.csv?" + params());
-$("json").onclick = () => window.open("/api/export.json?" + params());
+$("csv").onclick = () => { setExportOpen(false); window.open("/api/export.csv?" + params()); };
+$("json").onclick = () => { setExportOpen(false); window.open("/api/export.json?" + params()); };
 $("pullMock").onclick = () => pull(true);
 $("pullLive").onclick = () => pull(false);
 $("purgeMock").onclick = async () => {
