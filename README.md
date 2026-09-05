@@ -5,6 +5,8 @@ through the official **Shopee Affiliate Open API** (signed GraphQL, no scraping)
 snapshot row per `(item_id, snapshot_date)`, computes signal metrics from the daily history, and
 serves a filterable dashboard with CSV / JSON export. Single user, no auth, no SaaS backend.
 
+![home](docs/home.png)
+
 ![dashboard](docs/dashboard.png)
 
 ## Stack
@@ -127,6 +129,7 @@ day without re-pulling.
 
 | Endpoint | Notes |
 | --- | --- |
+| `GET /api/home` | home panels: suggested picks (with reasons), most sales, highest commission, biggest revenue pool, fastest climbers |
 | `GET /api/meta` | dates, categories, signal counts, recent runs |
 | `GET /api/products` | `date, category, signal (comma list), min_price, max_price, min_commission (5 or 0.05), min_sales, min_rating, q, sort, order, limit, offset` |
 | `GET /api/products/{item_id}` | latest row + full daily history |

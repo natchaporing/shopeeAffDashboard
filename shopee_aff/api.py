@@ -30,6 +30,7 @@ from psycopg import sql
 from .config import get_settings
 from .db import connect, migrate
 from .ingest import run_ingest
+from .home import build_suggestions
 from .scheduler import build_scheduler
 from .signals import SIGNALS
 
@@ -193,6 +194,30 @@ def meta(snapshot_date: date | None = Query(None, alias="date")):
         "signals": {s["signal"]: s["n"] for s in sigs},
         "signal_order": SIGNALS,
         "runs": [{k: (_clean(v) if not hasattr(v, "isoformat") else v.isoformat()) for k, v in r.items()} for r in runs],
+    }
+
+
+@app.get("/api/home")
+def home(snapshot_date: date | None = Query(None, alias="date"), limit: int = Query(10, ge=1, le=50)):
+    """Top lists for the home panel: most sales, highest commission, biggest revenue pool, suggested picks."""
+    with connect() as conn:
+        d = _resolve_date(conn, snapshot_date)
+        where, params = build_filters(d, None, None, None, None, None, None, None, None)
+        top_sales, _ = query_products(conn, where, params, "monthly_sales", "desc", limit, 0)
+        top_revenue, _ = query_products(conn, where, params, "est_monthly_revenue", "desc", limit, 0)
+        # highest commission among products that actually sell (avoid 30% commission on a dead listing)
+        comm_where, comm_params = build_filters(d, None, None, None, None, None, 1, None, None)
+        top_commission, _ = query_products(conn, comm_where, comm_params, "commission_rate", "desc", limit, 0)
+        movers, _ = query_products(conn, where, params, "rank_velocity", "desc", limit, 0)
+        all_rows, _ = query_products(conn, where, params, "breakout_score", "desc", None, 0)
+    settings = get_settings()
+    return {
+        "date": d.isoformat(),
+        "top_sales": top_sales,
+        "top_commission": top_commission,
+        "top_revenue": top_revenue,
+        "movers": [m for m in movers if (m.get("rank_velocity") or 0) > 0],
+        "suggestions": build_suggestions(all_rows, settings.velocity_window_days, limit=12),
     }
 
 

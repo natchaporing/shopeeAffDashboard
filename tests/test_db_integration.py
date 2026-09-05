@@ -55,3 +55,12 @@ def test_ingest_then_query(client, settings):
     assert js["total"] == 300
 
     assert client.post("/api/ingest", params={"mock": 1, "date": end.isoformat()}).json()["rows"] == 300
+
+
+def test_home_endpoint(client):
+    h = client.get("/api/home").json()
+    assert len(h["top_sales"]) == 10 and h["top_sales"][0]["monthly_sales"] >= h["top_sales"][-1]["monthly_sales"]
+    assert all(x["monthly_sales"] >= 1 for x in h["top_commission"])
+    assert h["top_commission"][0]["commission_rate"] >= h["top_commission"][-1]["commission_rate"]
+    assert h["suggestions"] and all(s["signal"] != "Fading" and s["reasons"] for s in h["suggestions"])
+    assert all(m["rank_velocity"] > 0 for m in h["movers"])

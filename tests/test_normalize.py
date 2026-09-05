@@ -26,3 +26,8 @@ def test_mock_source_is_deterministic_and_ranked():
     assert [n["_position"] for n in a] == list(range(1, 51))
     assert len({n["itemId"] for n in a}) == 50
     assert normalize_offer(a[0], D).rank == 1
+
+
+def test_zero_counts_are_kept_not_dropped():
+    r = normalize_offer({"itemId": 1, "partnerCount": 0, "cumulativeSales": 0}, D)
+    assert r.partner_count == 0 and r.cumulative_sales == 0

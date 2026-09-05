@@ -38,9 +38,41 @@
   .pos { color:#1b8a5a; } .neg { color:#c0392b; }
   .muted { color:var(--muted); }
   #status { font-size:12px; color:var(--muted); margin-left:auto; }
-  .hist { display:grid; grid-template-columns: 320px 1fr; gap:16px; align-items:start; }
+  .hist { display:grid; grid-template-columns: 320px minmax(0,1fr); gap:16px; align-items:start; }
+  .hist > div { min-width:0; }
   .hist table { font-size:12px; }
   a { color:inherit; }
+  .home { padding:12px 16px 4px; display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:12px; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; min-width:0; }
+  .panel h2 { margin:0 0 6px; font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+  .panel h2 span { color:var(--muted); font-weight:500; font-size:11px; }
+  .panel h2 a { font-size:11px; color:var(--accent); font-weight:500; text-decoration:none; cursor:pointer; }
+  .panel ol { list-style:none; margin:0; padding:0; }
+  .panel li { display:flex; gap:8px; align-items:center; padding:5px 0; border-top:1px solid var(--line); cursor:pointer; }
+  .panel li:first-child { border-top:0; }
+  .panel li:hover { background:#fffaf8; }
+  .panel .n { width:18px; color:var(--muted); font-size:11px; text-align:right; flex:none; }
+  .panel .t { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .panel .t small { display:block; color:var(--muted); font-size:11px; overflow:hidden; text-overflow:ellipsis; }
+  .panel .v { font-weight:600; flex:none; text-align:right; font-variant-numeric:tabular-nums; }
+  .panel .v small { display:block; font-weight:400; color:var(--muted); font-size:10px; }
+  .panel.wide { grid-column: 1 / -1; }
+  .picks { display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:8px; }
+  .pick { border:1px solid var(--line); border-radius:8px; padding:8px 10px; cursor:pointer; display:flex; flex-direction:column; gap:4px; }
+  .pick:hover { border-color:var(--accent); }
+  .pick .head { display:flex; gap:6px; align-items:center; }
+  .pick .head b { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+  .pick ul { margin:0; padding-left:16px; font-size:12px; color:#374151; }
+  .pick .kpis { display:flex; gap:10px; font-size:11px; color:var(--muted); flex-wrap:wrap; }
+  .pick .kpis b { color:var(--text); }
+  .toggle { cursor:pointer; color:var(--muted); font-size:12px; user-select:none; }
+  #modal { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:flex-start; justify-content:center; padding:40px 16px; z-index:10; overflow:auto; }
+  #modal.open { display:flex; }
+  #modal .box { background:var(--card); border-radius:10px; max-width:1100px; width:100%; padding:14px 16px; box-shadow:0 10px 40px rgba(0,0,0,.2); }
+  #modal .box h3 { margin:0 0 8px; font-size:14px; display:flex; gap:8px; align-items:center; }
+  #modal .box h3 b { flex:1; }
+  #modal table { font-size:12px; }
+  #modal th, #modal td { padding:5px 6px; }
 </style>
 </head>
 <body>
@@ -51,6 +83,9 @@
   <button id="pullMock" title="Ingest synthetic data for the selected date">Pull (mock)</button>
   <button id="pullLive" title="Ingest live data from the Shopee Open API">Pull (live)</button>
 </header>
+
+<div class="home" id="home"></div>
+<div style="padding:4px 16px 0"><span class="toggle" id="homeToggle">▾ hide home panels</span></div>
 
 <div class="chips" id="chips"></div>
 
@@ -84,6 +119,8 @@
     </span>
   </div>
 </main>
+
+<div id="modal"><div class="box" id="modalBox"></div></div>
 
 <script>
 const SIGNALS = {{ signals|tojson }};
@@ -181,9 +218,18 @@ function sparkline(hist) {
   return `<svg width="${W}" height="${H}" style="background:#fff;border:1px solid var(--line);border-radius:6px">
     <path d="${d}" fill="none" stroke="#ee4d2d" stroke-width="2"/>
     ${pts.map((h,i)=>`<circle cx="${x(i)}" cy="${y(h.rank)}" r="2.5" fill="#ee4d2d"><title>${h.snapshot_date}: rank ${h.rank}</title></circle>`).join("")}
-    <text x="${P}" y="${H-2}" font-size="9" fill="#6b7280">rank ${hi} (worst)</text>
-    <text x="${P}" y="10" font-size="9" fill="#6b7280">rank ${lo} (best) – lower is better</text>
-  </svg>`;
+  </svg><div class="muted" style="font-size:11px;margin-top:2px">rank over ${pts.length} days · best #${lo}, worst #${hi} · lower is better</div>`;
+}
+
+function detailHtml(d) {
+  return `<div class="hist">
+    <div>${sparkline(d.history)}<div style="margin-top:6px;font-size:12px">
+      item ${d.item.item_id} · shop ${esc(d.item.shop_name||d.item.shop_id||"")} · headroom ${fmt(d.item.headroom)} · gap pct ${fmt(d.item.gap_percentile)}
+      ${d.item.product_link?` · <a href="${esc(d.item.product_link)}" target="_blank" rel="noopener">product page</a>`:""}
+      ${d.item.offer_link?` · <a href="${esc(d.item.offer_link)}" target="_blank" rel="noopener">affiliate link</a>`:""}</div></div>
+    <div style="overflow:auto"><table><thead><tr><th class=l>date</th><th>rank</th><th>price</th><th>comm %</th><th>mo. sales</th><th>rating</th><th>velocity</th><th>accel</th><th>angel</th><th>breakout</th><th>signal</th></tr></thead>
+    <tbody>${d.history.slice().reverse().map(h=>`<tr><td class=l>${h.snapshot_date}</td><td>${fmt(h.rank)}</td><td>${fmt(h.price,2)}</td><td>${pct(h.commission_rate)}</td><td>${fmt(h.monthly_sales)}</td><td>${h.rating==null?"–":Number(h.rating).toFixed(1)}</td><td>${signed(h.rank_velocity)}</td><td>${signed(h.rank_acceleration)}</td><td>${fmt(h.angel_score)}</td><td>${fmt(h.breakout_score)}</td><td><span class="sig ${h.signal}">${h.signal}</span></td></tr>`).join("")}</tbody></table></div>
+  </div>`;
 }
 
 async function toggleDetail(tr) {
@@ -191,15 +237,58 @@ async function toggleDetail(tr) {
   if (next && next.classList.contains("detail")) { next.remove(); return; }
   const d = await (await fetch("/api/products/"+tr.dataset.id)).json();
   const row = document.createElement("tr"); row.className = "detail";
-  row.innerHTML = `<td colspan="${COLS.length}"><div class="hist">
-    <div>${sparkline(d.history)}<div style="margin-top:6px;font-size:12px">
-      item ${d.item.item_id} · shop ${esc(d.item.shop_name||d.item.shop_id||"")} · headroom ${fmt(d.item.headroom)} · gap pct ${fmt(d.item.gap_percentile)}
-      ${d.item.offer_link?` · <a href="${esc(d.item.offer_link)}" target="_blank" rel="noopener">affiliate link</a>`:""}</div></div>
-    <table><thead><tr><th class=l>date</th><th>rank</th><th>price</th><th>comm %</th><th>mo. sales</th><th>rating</th><th>velocity</th><th>accel</th><th>angel</th><th>breakout</th><th>signal</th></tr></thead>
-    <tbody>${d.history.slice().reverse().map(h=>`<tr><td class=l>${h.snapshot_date}</td><td>${fmt(h.rank)}</td><td>${fmt(h.price,2)}</td><td>${pct(h.commission_rate)}</td><td>${fmt(h.monthly_sales)}</td><td>${h.rating==null?"–":Number(h.rating).toFixed(1)}</td><td>${signed(h.rank_velocity)}</td><td>${signed(h.rank_acceleration)}</td><td>${fmt(h.angel_score)}</td><td>${fmt(h.breakout_score)}</td><td><span class="sig ${h.signal}">${h.signal}</span></td></tr>`).join("")}</tbody></table>
-  </div></td>`;
+  row.innerHTML = `<td colspan="${COLS.length}">${detailHtml(d)}</td>`;
   tr.after(row);
 }
+
+async function openModal(itemId) {
+  const d = await (await fetch("/api/products/"+itemId)).json();
+  $("modalBox").innerHTML = `<h3><b>${esc(d.item.title)}</b><span class="sig ${d.item.signal}">${d.item.signal}</span><button id="modalClose">✕</button></h3>${detailHtml(d)}`;
+  $("modal").classList.add("open");
+  $("modalClose").onclick = () => $("modal").classList.remove("open");
+}
+$("modal").onclick = e => { if (e.target.id === "modal") $("modal").classList.remove("open"); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("modal").classList.remove("open"); });
+
+function listPanel(title, sub, items, valueFn, sortKey) {
+  const rows = items.map((it, i) => `<li data-id="${it.item_id}">
+      <span class="n">${i+1}</span>
+      <span class="t" title="${esc(it.title)}">${esc(it.title)}<small>${esc(it.category||"")} · #${fmt(it.rank)} · <span class="sig ${it.signal}" style="padding:0 6px">${it.signal}</span></small></span>
+      <span class="v">${valueFn(it)}</span></li>`).join("") || `<li class="muted">no data</li>`;
+  return `<div class="panel"><h2>${title} <span>${sub}</span>${sortKey?`<a data-sort="${sortKey}">view all ›</a>`:""}</h2><ol>${rows}</ol></div>`;
+}
+
+async function loadHome() {
+  const d = $("date").value;
+  const r = await fetch("/api/home" + (d ? "?date="+d : ""));
+  if (!r.ok) { $("home").innerHTML = ""; return; }
+  const h = await r.json();
+  const picks = h.suggestions.map(it => `<div class="pick" data-id="${it.item_id}">
+      <div class="head"><b title="${esc(it.title)}">${esc(it.title)}</b><span class="sig ${it.signal}">${it.signal}</span></div>
+      <ul>${it.reasons.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+      <div class="kpis"><span>rank <b>#${fmt(it.rank)}</b></span><span>sales <b>${fmt(it.monthly_sales)}</b>/mo</span><span>comm <b>${pct(it.commission_rate)}</b></span><span>price <b>${fmt(it.price,0)}</b></span><span>score <b>${fmt(it.suggest_score)}</b></span></div>
+    </div>`).join("") || `<div class="muted">nothing to suggest yet – need at least two days of snapshots</div>`;
+  $("home").innerHTML =
+    `<div class="panel wide"><h2>Suggested for you <span>angel + breakout score, signal bonus, no Fading</span></h2><div class="picks">${picks}</div></div>` +
+    listPanel("Most sales", "monthly", h.top_sales, it => `${fmt(it.monthly_sales)}<small>${pct(it.commission_rate)} comm</small>`, "monthly_sales") +
+    listPanel("Highest commission", "with sales > 0", h.top_commission, it => `${pct(it.commission_rate)}<small>${fmt(it.monthly_sales)} sales</small>`, "commission_rate") +
+    listPanel("Biggest revenue pool", "price × comm × sales", h.top_revenue, it => `${fmt(it.est_monthly_revenue)}<small>${pct(it.commission_rate)} · ${fmt(it.monthly_sales)} sales</small>`, "est_monthly_revenue") +
+    listPanel("Fastest climbers", `rank change, ${h.movers.length ? "last window" : "needs history"}`, h.movers, it => `${signed(it.rank_velocity)}<small>now #${fmt(it.rank)}</small>`, "rank_velocity");
+  document.querySelectorAll("#home [data-id]").forEach(el => el.onclick = e => { if (e.target.tagName!=="A") openModal(el.dataset.id); });
+  document.querySelectorAll("#home a[data-sort]").forEach(a => a.onclick = () => {
+    state.sort = a.dataset.sort; state.order = "desc"; state.offset = 0; state.signals.clear();
+    if (a.dataset.sort === "commission_rate") $("min_sales").value = 1;
+    loadMeta(true).then(load); $("tbl").scrollIntoView({behavior:"smooth"});
+  });
+}
+
+$("homeToggle").onclick = () => {
+  const hidden = $("home").style.display === "none";
+  $("home").style.display = hidden ? "" : "none";
+  $("homeToggle").textContent = hidden ? "▾ hide home panels" : "▸ show home panels";
+  try { localStorage.setItem("homeHidden", hidden ? "0" : "1"); } catch (e) {}
+};
+try { if (localStorage.getItem("homeHidden") === "1") { $("home").style.display = "none"; $("homeToggle").textContent = "▸ show home panels"; } } catch (e) {}
 
 async function pull(mock) {
   const b = mock ? $("pullMock") : $("pullLive"); b.disabled = true; b.textContent = "pulling…";
@@ -207,13 +296,13 @@ async function pull(mock) {
     const p = new URLSearchParams(); if (mock) p.set("mock","1"); const d = $("date").value; if (d && mock) p.set("date", d);
     const r = await fetch("/api/ingest?"+p, {method:"POST"}); const j = await r.json();
     alert(r.ok ? `ingested ${j.rows} rows for ${j.snapshot_date} (${j.source})` : `failed: ${j.detail}`);
-    await loadMeta(false); await load();
+    await loadMeta(false); await load(); await loadHome();
   } finally { b.disabled = false; b.textContent = mock ? "Pull (mock)" : "Pull (live)"; }
 }
 
 $("apply").onclick = () => { state.offset = 0; load(); };
 $("reset").onclick = () => { for (const k of ["category","min_price","max_price","min_commission","min_sales","min_rating","q"]) $(k).value=""; state.signals.clear(); state.offset=0; loadMeta(true).then(load); };
-$("date").onchange = () => { state.offset = 0; loadMeta(true).then(load); };
+$("date").onchange = () => { state.offset = 0; loadMeta(true).then(load); loadHome(); };
 $("prev").onclick = () => { state.offset = Math.max(0, state.offset - state.limit); load(); };
 $("next").onclick = () => { state.offset += state.limit; load(); };
 $("csv").onclick = () => window.open("/api/export.csv?" + params());
@@ -221,7 +310,7 @@ $("json").onclick = () => window.open("/api/export.json?" + params());
 $("pullMock").onclick = () => pull(true);
 $("pullLive").onclick = () => pull(false);
 document.querySelectorAll(".filters input").forEach(i => i.addEventListener("keydown", e => { if (e.key==="Enter") { state.offset=0; load(); } }));
-loadMeta().then(load);
+loadMeta().then(load).then(loadHome);
 </script>
 </body>
 </html>

@@ -51,6 +51,14 @@ def _rate(v: Any) -> float | None:
     return f / 100.0 if f > 1.0 else f
 
 
+def _first(node: dict[str, Any], *keys: str) -> Any:
+    """First key present in the node (0 is a real value, so don't use `or`)."""
+    for k in keys:
+        if node.get(k) is not None:
+            return node[k]
+    return None
+
+
 def category_label(cat_ids: list[int]) -> str | None:
     if not cat_ids:
         return None
@@ -75,9 +83,9 @@ def normalize_offer(node: dict[str, Any], snapshot_date: date, rank: int | None 
         seller_commission_rate=_rate(node.get("sellerCommissionRate")),
         shopee_commission_rate=_rate(node.get("shopeeCommissionRate")),
         monthly_sales=_int(node.get("sales")),
-        cumulative_sales=_int(node.get("cumulativeSales") or node.get("historicalSales")),
+        cumulative_sales=_int(_first(node, "cumulativeSales", "historicalSales")),
         rating=_num(node.get("ratingStar")),
-        partner_count=_int(node.get("partnerCount") or node.get("creatorCount")),
+        partner_count=_int(_first(node, "partnerCount", "creatorCount")),
         rank=rank if rank is not None else _int(node.get("_position")),
         image_url=node.get("imageUrl"),
         product_link=node.get("productLink"),
