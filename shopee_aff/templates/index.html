@@ -4,305 +4,813 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shopee Affiliate Finder</title>
+<script>
+  // Theme bootstrap: runs before paint so there is no light/dark flash.
+  (function () {
+    try {
+      var t = localStorage.getItem("theme");
+      if (t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches)) document.documentElement.classList.add("dark");
+    } catch (e) {}
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      container: { center: true },
+      extend: {
+        fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"] },
+        colors: {
+          border: "hsl(var(--border))",
+          input: "hsl(var(--input))",
+          ring: "hsl(var(--ring))",
+          background: "hsl(var(--background))",
+          foreground: "hsl(var(--foreground))",
+          primary: { DEFAULT: "hsl(var(--primary))", foreground: "hsl(var(--primary-foreground))" },
+          secondary: { DEFAULT: "hsl(var(--secondary))", foreground: "hsl(var(--secondary-foreground))" },
+          destructive: { DEFAULT: "hsl(var(--destructive))", foreground: "hsl(var(--destructive-foreground))" },
+          muted: { DEFAULT: "hsl(var(--muted))", foreground: "hsl(var(--muted-foreground))" },
+          accent: { DEFAULT: "hsl(var(--accent))", foreground: "hsl(var(--accent-foreground))" },
+          popover: { DEFAULT: "hsl(var(--popover))", foreground: "hsl(var(--popover-foreground))" },
+          card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
+          success: "hsl(var(--success))",
+        },
+        borderRadius: { lg: "var(--radius)", md: "calc(var(--radius) - 2px)", sm: "calc(var(--radius) - 4px)" },
+      },
+    },
+  };
+</script>
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --text:#1f2933; --muted:#6b7280; --accent:#ee4d2d; }
-  * { box-sizing:border-box; }
-  body { margin:0; font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
-  header { background:var(--card); border-bottom:1px solid var(--line); padding:10px 16px; display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
-  header h1 { font-size:16px; margin:0; color:var(--accent); }
-  .filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:10px 16px; }
-  .filters label { display:flex; flex-direction:column; font-size:11px; color:var(--muted); gap:2px; }
-  .filters input, .filters select { padding:5px 7px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:13px; min-width:90px; }
-  .filters input[type=number] { width:100px; }
-  button { padding:6px 10px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; font-size:13px; }
-  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
-  .chips { display:flex; gap:6px; flex-wrap:wrap; padding:0 16px 8px; }
-  .chip { padding:3px 10px; border-radius:999px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:12px; user-select:none; }
-  .chip.on { border-color:var(--accent); background:#fff1ed; color:var(--accent); font-weight:600; }
-  .chip small { color:var(--muted); margin-left:4px; }
-  main { padding:0 16px 24px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:auto; }
-  table { border-collapse:collapse; width:100%; font-size:13px; white-space:nowrap; }
-  th, td { padding:7px 9px; border-bottom:1px solid var(--line); text-align:right; }
-  th { position:sticky; top:0; background:#fafbfc; color:var(--muted); font-weight:600; cursor:pointer; font-size:12px; }
-  th.s { color:var(--accent); }
-  td.l, th.l { text-align:left; }
-  td.title { max-width:340px; overflow:hidden; text-overflow:ellipsis; }
-  tr:hover td { background:#fffaf8; }
-  tr.detail td { background:#fcfcfd; text-align:left; white-space:normal; }
-  .sig { padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; color:#fff; display:inline-block; }
-  .sig.Rocket{background:#d62828} .sig.Hidden{background:#7b2cbf} .sig.Rising{background:#2a9d8f} .sig.Fading{background:#8d99ae}
-  .sig.Proven{background:#e9a800} .sig.Steady{background:#adb5bd} .sig.Single{background:#ced4da;color:#495057}
-  .bar { display:inline-block; height:8px; border-radius:4px; background:linear-gradient(90deg,#ffd6cc,var(--accent)); vertical-align:middle; margin-right:5px; }
-  .foot { display:flex; justify-content:space-between; align-items:center; padding:10px 4px; color:var(--muted); font-size:12px; }
-  .pos { color:#1b8a5a; } .neg { color:#c0392b; }
-  .muted { color:var(--muted); }
-  #status { font-size:12px; color:var(--muted); margin-left:auto; }
-  .hist { display:grid; grid-template-columns: 320px minmax(0,1fr); gap:16px; align-items:start; }
-  .hist > div { min-width:0; }
-  .hist table { font-size:12px; }
-  a { color:inherit; }
-  .home { padding:12px 16px 4px; display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:12px; }
-  .panel { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; min-width:0; }
-  .panel h2 { margin:0 0 6px; font-size:13px; display:flex; justify-content:space-between; align-items:center; }
-  .panel h2 span { color:var(--muted); font-weight:500; font-size:11px; }
-  .panel h2 a { font-size:11px; color:var(--accent); font-weight:500; text-decoration:none; cursor:pointer; }
-  .panel ol { list-style:none; margin:0; padding:0; }
-  .panel li { display:flex; gap:8px; align-items:center; padding:5px 0; border-top:1px solid var(--line); cursor:pointer; }
-  .panel li:first-child { border-top:0; }
-  .panel li:hover { background:#fffaf8; }
-  .panel .n { width:18px; color:var(--muted); font-size:11px; text-align:right; flex:none; }
-  .panel .t { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .panel .t small { display:block; color:var(--muted); font-size:11px; overflow:hidden; text-overflow:ellipsis; }
-  .panel .v { font-weight:600; flex:none; text-align:right; font-variant-numeric:tabular-nums; }
-  .panel .v small { display:block; font-weight:400; color:var(--muted); font-size:10px; }
-  .panel.wide { grid-column: 1 / -1; }
-  .picks { display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:8px; }
-  .pick { border:1px solid var(--line); border-radius:8px; padding:8px 10px; cursor:pointer; display:flex; flex-direction:column; gap:4px; }
-  .pick:hover { border-color:var(--accent); }
-  .pick .head { display:flex; gap:6px; align-items:center; }
-  .pick .head b { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
-  .pick ul { margin:0; padding-left:16px; font-size:12px; color:#374151; }
-  .pick .kpis { display:flex; gap:10px; font-size:11px; color:var(--muted); flex-wrap:wrap; }
-  .pick .kpis b { color:var(--text); }
-  .toggle { cursor:pointer; color:var(--muted); font-size:12px; user-select:none; }
-  #modal { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:flex-start; justify-content:center; padding:40px 16px; z-index:10; overflow:auto; }
-  #modal.open { display:flex; }
-  #modal .box { background:var(--card); border-radius:10px; max-width:1100px; width:100%; padding:14px 16px; box-shadow:0 10px 40px rgba(0,0,0,.2); }
-  #modal .box h3 { margin:0 0 8px; font-size:14px; display:flex; gap:8px; align-items:center; }
-  #modal .box h3 b { flex:1; }
-  #modal table { font-size:12px; }
-  #modal th, #modal td { padding:5px 6px; }
+  :root {
+    color-scheme: light;
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 10 78% 48%;             /* Shopee orange, darkened for AA on white text */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 160 84% 30%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 10 78% 48%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    color-scheme: dark;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 8% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 8% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 10 82% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 158 64% 52%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 10 82% 55%;
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body { background: hsl(var(--background)); color: hsl(var(--foreground)); }
+  /* Signal identity colours: subtle tint + coloured text (light), translucent tint (dark). */
+  .sig-Rocket { --sig: 0 72% 51%;   --sig-text: 0 74% 42%;   --sig-text-dark: 0 91% 71%; }
+  .sig-Hidden { --sig: 262 83% 58%; --sig-text: 263 70% 50%; --sig-text-dark: 258 90% 76%; }
+  .sig-Rising { --sig: 160 84% 39%; --sig-text: 161 94% 30%; --sig-text-dark: 158 64% 52%; }
+  .sig-Fading { --sig: 215 20% 65%; --sig-text: 215 19% 45%; --sig-text-dark: 215 20% 70%; }
+  .sig-Proven { --sig: 38 92% 50%;  --sig-text: 26 90% 37%;  --sig-text-dark: 43 96% 60%; }
+  .sig-Steady { --sig: 240 5% 65%;  --sig-text: 240 5% 40%;  --sig-text-dark: 240 5% 75%; }
+  .sig-Single { --sig: 240 6% 80%;  --sig-text: 240 4% 50%;  --sig-text-dark: 240 5% 60%; }
+  .sig-Rocket, .sig-Hidden, .sig-Rising, .sig-Fading, .sig-Proven, .sig-Steady, .sig-Single { --sig-fg: var(--sig-text); }
+  .dark .sig-Rocket, .dark .sig-Hidden, .dark .sig-Rising, .dark .sig-Fading, .dark .sig-Proven, .dark .sig-Steady, .dark .sig-Single { --sig-fg: var(--sig-text-dark); }
+  .badge.sig-Rocket, .badge.sig-Hidden, .badge.sig-Rising, .badge.sig-Fading, .badge.sig-Proven, .badge.sig-Steady, .badge.sig-Single {
+    color: hsl(var(--sig-fg)); background: hsl(var(--sig) / 0.12); border-color: hsl(var(--sig) / 0.35);
+  }
+  .dark .badge.sig-Rocket, .dark .badge.sig-Hidden, .dark .badge.sig-Rising, .dark .badge.sig-Fading, .dark .badge.sig-Proven, .dark .badge.sig-Steady, .dark .badge.sig-Single {
+    background: hsl(var(--sig) / 0.16); border-color: hsl(var(--sig) / 0.4);
+  }
+  .sig-dot { background: hsl(var(--sig)); }
+  .chip[aria-pressed="true"] { border-color: hsl(var(--sig) / 0.6); background: hsl(var(--sig) / 0.12); color: hsl(var(--sig-fg)); }
+  .stat[aria-pressed="true"] { box-shadow: 0 0 0 2px hsl(var(--sig) / 0.5); border-color: transparent; }
+  .spark-tip { pointer-events: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 1s linear infinite; }
+  #modal[data-open="1"], #confirm[data-open="1"] { display: flex; }
+</style>
+<style type="text/tailwindcss">
+  @layer base {
+    * { @apply border-border; }
+    body { @apply bg-background text-foreground font-sans text-sm antialiased; }
+    button, input, select { @apply font-sans; }
+    a { @apply underline-offset-4; }
+    ::selection { @apply bg-primary/20; }
+  }
+  @layer components {
+    .btn { @apply inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-3 text-sm font-medium transition-colors ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn svg { @apply h-4 w-4 shrink-0; }
+    .btn-primary { @apply bg-primary text-primary-foreground shadow-sm hover:bg-primary/90; }
+    .btn-outline { @apply border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground; }
+    .btn-ghost { @apply hover:bg-accent hover:text-accent-foreground; }
+    .btn-destructive { @apply bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90; }
+    .btn-sm { @apply h-8 px-2.5 text-xs; }
+    .btn-icon { @apply h-9 w-9 px-0; }
+    .btn-icon.btn-sm { @apply h-8 w-8; }
+    .input { @apply flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 tabular-nums; }
+    .select-wrap { @apply relative; }
+    .select-wrap select { @apply appearance-none pr-8; }
+    .select-wrap svg { @apply pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground; }
+    .field { @apply flex min-w-0 flex-col gap-1.5; }
+    .field > span { @apply text-xs font-medium text-muted-foreground; }
+    .card { @apply rounded-lg border bg-card text-card-foreground shadow-sm; }
+    .card-head { @apply flex flex-wrap items-start justify-between gap-3 p-4 pb-2; }
+    .card-title { @apply text-sm font-semibold leading-none tracking-tight; }
+    .card-desc { @apply mt-1 text-xs text-muted-foreground; }
+    .badge { @apply inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold leading-4 whitespace-nowrap; }
+    .badge-neutral { @apply border-border bg-muted text-muted-foreground; }
+    .badge-ok { @apply border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400; }
+    .badge-err { @apply border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400; }
+    .chip { @apply inline-flex h-8 items-center gap-1.5 rounded-full border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background; }
+    .chip .n { @apply rounded-full bg-muted px-1.5 py-px text-[10px] font-semibold tabular-nums text-muted-foreground; }
+    .chip[aria-pressed="true"] .n { @apply bg-background/70 text-inherit; }
+    .sig-dot { @apply inline-block h-2 w-2 shrink-0 rounded-full; }
+    .stat { @apply flex min-w-0 flex-col gap-1 rounded-lg border bg-card p-3 text-left shadow-sm transition-colors; }
+    button.stat { @apply hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background; }
+    .stat .lbl { @apply flex items-center gap-1.5 text-xs font-medium text-muted-foreground; }
+    .stat .val { @apply text-2xl font-semibold leading-none tabular-nums tracking-tight; }
+    .stat .sub { @apply text-[11px] text-muted-foreground; }
+    .tbl { @apply w-full min-w-[1180px] caption-bottom text-sm; }
+    /* child combinators: the expanded-row detail nests a second table that must not inherit these */
+    .tbl > thead > tr > th { @apply h-10 whitespace-nowrap px-2 text-right align-middle text-xs font-medium text-muted-foreground; }
+    .tbl > thead > tr > th.l, .tbl > tbody > tr > td.l { @apply text-left; }
+    .tbl > tbody > tr > td { @apply whitespace-nowrap border-t px-2 py-2 align-middle text-right tabular-nums; }
+    .tbl > thead > tr > th:first-child, .tbl > tbody > tr > td:first-child { @apply pl-4; }
+    .tbl > thead > tr > th:last-child, .tbl > tbody > tr > td:last-child { @apply pr-4; }
+    .tbl > tbody > tr[data-id] { @apply cursor-pointer transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:bg-muted/60; }
+    .tbl > tbody > tr.expanded { @apply bg-muted/40; }
+    .tbl > tbody > tr.detail > td { @apply whitespace-normal bg-muted/30 p-0 text-left; }
+    .detail-inner { @apply sticky left-0 p-4; }
+    .th-btn { @apply -ml-1.5 inline-flex h-8 items-center gap-0.5 rounded-md px-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring; }
+    .th-btn svg { @apply h-3.5 w-3.5 opacity-0 transition-opacity; }
+    .th-btn:hover svg { @apply opacity-60; }
+    th[aria-sort] .th-btn { @apply text-foreground; }
+    th[aria-sort] .th-btn svg { @apply opacity-100 text-primary; }
+    .meter { @apply inline-flex items-center justify-end gap-2; }
+    .meter .track { @apply relative h-1.5 w-12 overflow-hidden rounded-full bg-primary/15; }
+    .meter .fill { @apply absolute inset-y-0 left-0 rounded-full bg-primary; }
+    .meter .num { @apply w-6 text-right; }
+    .pos { @apply text-emerald-700 dark:text-emerald-400; }
+    .neg { @apply text-red-700 dark:text-red-400; }
+    .muted { @apply text-muted-foreground; }
+    .mini { @apply w-full text-xs; }
+    .mini th { @apply h-8 whitespace-nowrap px-2 text-right font-medium text-muted-foreground first:pl-3 last:pr-3; }
+    .mini th.l, .mini td.l { @apply text-left; }
+    .mini td { @apply whitespace-nowrap border-t px-2 py-1.5 text-right tabular-nums first:pl-3 last:pr-3; }
+    .list { @apply divide-y; }
+    .list li { @apply flex items-center gap-3 px-4 py-2 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:bg-muted/60 cursor-pointer; }
+    .list .n { @apply w-4 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground; }
+    .list .t { @apply min-w-0 flex-1; }
+    .list .t b { @apply block truncate font-medium; }
+    .list .t small { @apply mt-0.5 flex items-center gap-1.5 truncate text-[11px] text-muted-foreground; }
+    .list .v { @apply shrink-0 text-right tabular-nums; }
+    .list .v b { @apply block font-semibold; }
+    .list .v small { @apply block text-[11px] font-normal text-muted-foreground; }
+    .pick { @apply flex cursor-pointer flex-col gap-2.5 rounded-lg border bg-card p-3.5 transition-colors hover:border-primary/60 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background text-left; }
+    .pick .head { @apply flex items-start justify-between gap-2; }
+    .pick .head b { @apply min-w-0 truncate font-semibold leading-5; }
+    .pick ul { @apply flex flex-col gap-1 text-xs text-muted-foreground; }
+    .pick ul li { @apply flex items-start gap-1.5; }
+    .pick ul svg { @apply mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400; }
+    .pick .kpis { @apply mt-auto grid grid-cols-5 gap-2 border-t pt-2.5; }
+    .pick .kpis .lbl { @apply text-[10px] font-medium uppercase tracking-wide text-muted-foreground; }
+    .pick .kpis .val { @apply text-xs font-semibold tabular-nums; }
+    .dl { @apply grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs; }
+    .dl dt { @apply text-muted-foreground; }
+    .dl dd { @apply truncate text-right font-medium tabular-nums; }
+    .skel { @apply animate-pulse rounded bg-muted; }
+    .empty { @apply flex flex-col items-center justify-center gap-2 px-6 py-14 text-center; }
+    .empty svg { @apply h-8 w-8 text-muted-foreground/70; }
+    .empty h4 { @apply text-sm font-semibold; }
+    .empty p { @apply max-w-sm text-xs text-muted-foreground; }
+    .kbd { @apply rounded border bg-muted px-1 py-px font-mono text-[10px] text-muted-foreground; }
+    .overlay { @apply fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-[2px] sm:p-8 dark:bg-black/70; }
+    .dialog { @apply w-full rounded-lg border bg-card text-card-foreground shadow-lg; }
+    .toast { @apply flex w-80 items-start gap-2.5 rounded-md border bg-card p-3 text-sm shadow-lg; }
+    .toast svg { @apply mt-0.5 h-4 w-4 shrink-0; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>Shopee Affiliate Finder</h1>
-  <label>date <select id="date"></select></label>
-  <span id="status">loading…</span>
-  <button id="pullMock" title="Ingest synthetic data for the selected date">Pull (mock)</button>
-  <button id="pullLive" title="Ingest live data from the Shopee Open API">Pull (live)</button>
-  <button id="purgeMock" title="Delete all synthetic demo rows">Clear mock</button>
+
+<!-- ============ Header ============ -->
+<header class="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+  <div class="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-4 py-2.5 sm:px-6">
+    <a href="/" class="mr-2 flex items-center gap-2.5 no-underline">
+      <span class="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+      </span>
+      <span class="leading-tight">
+        <span class="block text-sm font-semibold tracking-tight">Shopee Affiliate Finder</span>
+        <span class="block text-[11px] text-muted-foreground">Product research</span>
+      </span>
+    </a>
+
+    <div class="ml-auto flex flex-wrap items-center gap-2">
+      <label class="select-wrap flex items-center" aria-label="Snapshot date">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" style="right:auto"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+        <select id="date" class="input h-9 w-[168px] pl-8 font-medium" title="Snapshot date"></select>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </label>
+      <span class="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true"></span>
+      <button id="pullMock" class="btn btn-outline" title="Ingest synthetic data for the selected date">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+        <span>Pull (mock)</span>
+      </button>
+      <button id="pullLive" class="btn btn-primary" title="Ingest live data from the Shopee Open API">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8l-4-4"/><path d="m12 21 4-4"/><path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284"/></svg>
+        <span>Pull (live)</span>
+      </button>
+      <button id="purgeMock" class="btn btn-outline text-destructive hover:text-destructive" title="Delete all synthetic demo rows">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+        <span>Clear mock</span>
+      </button>
+      <span class="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true"></span>
+      <button id="themeToggle" class="btn btn-outline btn-icon" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dark:hidden"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden dark:block"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      </button>
+    </div>
+  </div>
 </header>
 
-<div class="home" id="home"></div>
-<div style="padding:4px 16px 0"><span class="toggle" id="homeToggle">▾ hide home panels</span></div>
+<main class="mx-auto flex max-w-[1600px] flex-col gap-5 px-4 py-5 sm:px-6">
 
-<div class="chips" id="chips"></div>
-
-<div class="filters">
-  <label>category <select id="category"><option value="">all</option></select></label>
-  <label>min price <input type="number" id="min_price" step="1" placeholder="0"></label>
-  <label>max price <input type="number" id="max_price" step="1" placeholder="∞"></label>
-  <label>min commission % <input type="number" id="min_commission" step="0.5" placeholder="0"></label>
-  <label>min monthly sales <input type="number" id="min_sales" step="10" placeholder="0"></label>
-  <label>min rating <input type="number" id="min_rating" step="0.1" placeholder="0"></label>
-  <label>search <input type="text" id="q" placeholder="title or shop"></label>
-  <label>&nbsp;<button class="primary" id="apply">Apply</button></label>
-  <label>&nbsp;<button id="reset">Reset</button></label>
-  <label>&nbsp;<button id="csv">Export CSV</button></label>
-  <label>&nbsp;<button id="json">Export JSON</button></label>
-</div>
-
-<main>
-  <div class="card">
-    <table id="tbl">
-      <thead><tr id="head"></tr></thead>
-      <tbody id="body"></tbody>
-    </table>
+  <!-- ============ Toolbar: title + status ============ -->
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div class="min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight">Overview</h1>
+      <p id="status" class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground" aria-live="polite">Loading…</p>
+    </div>
+    <button id="homeToggle" class="btn btn-ghost btn-sm text-muted-foreground" aria-expanded="true" aria-controls="home">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+      <span id="homeToggleText">Hide home panels</span>
+    </button>
   </div>
-  <div class="foot">
-    <span id="count"></span>
-    <span>
-      <button id="prev">‹ prev</button>
-      <span id="page"></span>
-      <button id="next">next ›</button>
-    </span>
-  </div>
+
+  <!-- ============ KPI strip ============ -->
+  <section id="kpis" class="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8" aria-label="Key figures"></section>
+
+  <!-- ============ Home panels ============ -->
+  <section id="home" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4" aria-label="Suggestions and top lists"></section>
+
+  <!-- ============ Products ============ -->
+  <section class="card" aria-labelledby="productsTitle">
+    <div class="card-head">
+      <div>
+        <h2 id="productsTitle" class="card-title">Products</h2>
+        <p class="card-desc" id="productsDesc">Filter, sort and export one day's snapshot. Click a row for its rank history.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="csv" class="btn btn-outline btn-sm" title="Download the filtered rows as CSV">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          Export CSV
+        </button>
+        <button id="json" class="btn btn-outline btn-sm" title="Download the filtered rows as JSON">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          Export JSON
+        </button>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2 px-4 pt-2" role="group" aria-label="Signal filters">
+      <span class="mr-1 text-xs font-medium text-muted-foreground">Signals</span>
+      <div id="chips" class="flex flex-wrap items-center gap-1.5"></div>
+    </div>
+
+    <form class="filters grid grid-cols-2 gap-3 px-4 pb-4 pt-3 md:grid-cols-4 xl:grid-cols-[minmax(150px,1.2fr)_repeat(5,minmax(96px,0.8fr))_minmax(180px,1.6fr)_auto]" onsubmit="return false" aria-label="Filters">
+      <label class="field">
+        <span>Category</span>
+        <span class="select-wrap"><select id="category" class="input"><option value="">All categories</option></select>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+      </label>
+      <label class="field"><span>Min price</span><input type="number" id="min_price" class="input" step="1" min="0" placeholder="0"></label>
+      <label class="field"><span>Max price</span><input type="number" id="max_price" class="input" step="1" min="0" placeholder="Any"></label>
+      <label class="field"><span>Min commission %</span><input type="number" id="min_commission" class="input" step="0.5" min="0" placeholder="0"></label>
+      <label class="field"><span>Min monthly sales</span><input type="number" id="min_sales" class="input" step="10" min="0" placeholder="0"></label>
+      <label class="field"><span>Min rating</span><input type="number" id="min_rating" class="input" step="0.1" min="0" max="5" placeholder="0"></label>
+      <label class="field col-span-2 md:col-span-2 xl:col-span-1">
+        <span>Search</span>
+        <span class="relative">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="q" class="input pl-8" placeholder="Title or shop name">
+        </span>
+      </label>
+      <div class="field col-span-2 md:col-span-2 xl:col-span-1">
+        <span class="hidden xl:block">&nbsp;</span>
+        <div class="flex items-center gap-2">
+          <button id="apply" type="submit" class="btn btn-primary">Apply</button>
+          <button id="reset" type="button" class="btn btn-ghost" title="Clear all filters">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Reset
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <div id="tblWrap" class="w-full overflow-x-auto border-t" aria-busy="false">
+      <table id="tbl" class="tbl">
+        <thead><tr id="head"></tr></thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground">
+      <span id="count" aria-live="polite"></span>
+      <div class="flex items-center gap-2">
+        <span id="page" class="tabular-nums"></span>
+        <button id="prev" class="btn btn-outline btn-sm" aria-label="Previous page">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Prev
+        </button>
+        <button id="next" class="btn btn-outline btn-sm" aria-label="Next page">
+          Next
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="pb-4 text-center text-[11px] text-muted-foreground">
+    Single-user research tool · data from the Shopee Affiliate Open API · <span class="kbd">Esc</span> closes dialogs
+  </footer>
 </main>
 
-<div id="modal"><div class="box" id="modalBox"></div></div>
+<!-- ============ Detail dialog ============ -->
+<div id="modal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle" data-open="0">
+  <div class="dialog max-w-[1200px]" id="modalBox"></div>
+</div>
+
+<!-- ============ Confirm dialog ============ -->
+<div id="confirm" class="overlay items-center" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmDesc" data-open="0">
+  <div class="dialog max-w-md p-5">
+    <h3 id="confirmTitle" class="text-base font-semibold">Delete mock data?</h3>
+    <p id="confirmDesc" class="mt-1.5 text-sm text-muted-foreground">Every synthetic demo row will be removed. Live Shopee data is untouched.</p>
+    <div class="mt-5 flex justify-end gap-2">
+      <button id="confirmCancel" class="btn btn-outline">Cancel</button>
+      <button id="confirmOk" class="btn btn-destructive">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="pointer-events-none fixed bottom-4 right-4 z-[60] flex flex-col gap-2" aria-live="polite"></div>
 
 <script>
 const SIGNALS = {{ signals|tojson }};
 const COLS = [
-  ["rank","#",false], ["title","product",true], ["category","cat",true], ["price","price",false],
-  ["commission_rate","comm %",false], ["monthly_sales","mo. sales",false], ["est_monthly_revenue","est. rev",false],
-  ["rating","rating",false], ["partner_count","creators",false], ["gap_score","gap",false],
-  ["angel_score","angel",false], ["rank_velocity","velocity",false], ["rank_acceleration","accel",false],
-  ["breakout_score","breakout",false], ["signal","signal",false],
+  ["rank","Rank",false], ["title","Product",true], ["category","Category",true], ["price","Price",false],
+  ["commission_rate","Comm %",false], ["monthly_sales","Sales/mo",false], ["est_monthly_revenue","Est. rev.",false],
+  ["rating","Rating",false], ["partner_count","Creators",false], ["gap_score","Gap",false],
+  ["angel_score","Angel",false], ["rank_velocity","Velocity",false], ["rank_acceleration","Accel",false],
+  ["breakout_score","Breakout",false], ["signal","Signal",false],
 ];
+const FILTER_IDS = ["category","min_price","max_price","min_commission","min_sales","min_rating","q"];
 const state = { sort:"breakout_score", order:"desc", limit:100, offset:0, signals:new Set(), meta:null };
 const $ = id => document.getElementById(id);
-const fmt = (v, d=0) => v==null ? "<span class=muted>–</span>" : Number(v).toLocaleString(undefined,{maximumFractionDigits:d});
-const pct = v => v==null ? "–" : (v*100).toFixed(1)+"%";
-const signed = v => v==null ? "<span class=muted>–</span>" : `<span class="${v>0?'pos':v<0?'neg':''}">${v>0?'+':''}${Number(v).toFixed(0)}</span>`;
+
+// ---------- icons (lucide) ----------
+const ICON = {
+  arrowUp: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+  arrowDown: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+  sortNone: '<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  ext: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',
+  db: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>',
+  filter: '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
+  loader: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+  ok: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  alert: '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
+  chevronRight: '<path d="m9 18 6-6-6-6"/>',
+  trend: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+  layers: '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  tag: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>',
+};
+const ic = (name, cls="h-4 w-4") => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${cls}" aria-hidden="true">${ICON[name]}</svg>`;
+
+// ---------- formatting ----------
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const DASH = '<span class="muted">–</span>';
+const fmt = (v, d=0) => v==null ? DASH : Number(v).toLocaleString("en-US",{minimumFractionDigits:d, maximumFractionDigits:d});
+const compact = v => v==null ? DASH : Math.abs(v) >= 1e6 ? (v/1e6).toFixed(1).replace(/\.0$/,"")+"M" : Math.abs(v) >= 1e4 ? (v/1e3).toFixed(1).replace(/\.0$/,"")+"K" : fmt(v);
+const pct = v => v==null ? "–" : (v*100).toFixed(1)+"%";
+const rating = v => v==null ? DASH : Number(v).toFixed(1);
+const signed = v => v==null ? DASH : `<span class="${v>0?'pos':v<0?'neg':'muted'}">${v>0?'+':v<0?'−':''}${Math.abs(Number(v)).toFixed(0)}</span>`;
+const badge = (sig, extra="") => sig ? `<span class="badge sig-${esc(sig)} ${extra}">${esc(sig)}</span>` : "";
+const meter = v => `<span class="meter"><span class="track" aria-hidden="true"><span class="fill" style="width:${Math.max(0,Math.min(100,v||0))}%"></span></span><span class="num">${fmt(v)}</span></span>`;
 
 function params(extra={}) {
   const p = new URLSearchParams();
   const d = $("date").value; if (d) p.set("date", d);
-  for (const k of ["category","min_price","max_price","min_commission","min_sales","min_rating","q"]) {
-    const v = $(k).value; if (v !== "") p.set(k, v);
-  }
+  for (const k of FILTER_IDS) { const v = $(k).value; if (v !== "") p.set(k, v); }
   if (state.signals.size) p.set("signal", [...state.signals].join(","));
   p.set("sort", state.sort); p.set("order", state.order);
   for (const [k,v] of Object.entries(extra)) p.set(k, v);
   return p;
 }
 
+// ---------- toasts ----------
+function toast(msg, kind="ok") {
+  const el = document.createElement("div");
+  el.className = "toast pointer-events-auto " + (kind==="ok" ? "" : "border-destructive/40");
+  el.setAttribute("role", kind==="ok" ? "status" : "alert");
+  el.innerHTML = `${ic(kind==="ok"?"ok":"alert", "h-4 w-4 " + (kind==="ok"?"text-emerald-600 dark:text-emerald-400":"text-destructive"))}<div class="min-w-0 flex-1">${esc(msg)}</div>
+    <button class="btn btn-ghost btn-icon btn-sm -mr-1 -mt-1 h-7 w-7" aria-label="Dismiss">${ic("x","h-3.5 w-3.5")}</button>`;
+  el.querySelector("button").onclick = () => el.remove();
+  $("toast").appendChild(el);
+  setTimeout(() => el.remove(), 6000);
+}
+
+// ---------- meta: date, category, chips, kpis, status ----------
 async function loadMeta(keepDate=false) {
   const d = keepDate ? $("date").value : "";
   const m = await (await fetch("/api/meta" + (d ? "?date="+d : ""))).json();
   state.meta = m;
-  $("date").innerHTML = m.dates.map(x => `<option ${x===m.date?"selected":""}>${x}</option>`).join("");
-  $("category").innerHTML = `<option value="">all (${m.total??0})</option>` +
+  $("date").innerHTML = m.dates.length
+    ? m.dates.map(x => `<option value="${x}" ${x===m.date?"selected":""}>${x}</option>`).join("")
+    : `<option value="">No snapshots</option>`;
+  $("category").innerHTML = `<option value="">All categories (${fmt(m.total??0)})</option>` +
     m.categories.map(c => `<option value="${esc(c.category)}">${esc(c.category)} (${c.count})</option>`).join("");
-  $("chips").innerHTML = SIGNALS.map(s =>
-    `<span class="chip sig-${s} ${state.signals.has(s)?"on":""}" data-s="${s}">${s}<small>${m.signals[s]||0}</small></span>`).join("");
-  document.querySelectorAll(".chip").forEach(c => c.onclick = () => {
-    const s = c.dataset.s; state.signals.has(s) ? state.signals.delete(s) : state.signals.add(s);
-    c.classList.toggle("on"); state.offset = 0; load();
-  });
+  renderChips();
+  renderKpis(m);
   const run = m.runs && m.runs[0];
-  $("status").textContent = m.latest ? `${m.dates.length} snapshot day(s) · last run ${run?run.status:"?"} ${run?run.snapshot_date:""} (${run?run.rows_written:0} rows${run&&run.source==="mock"?", mock":""})`
-                                     : "no data yet – click Pull (mock) to try it";
+  if (m.latest) {
+    const ok = run && run.status === "ok";
+    $("status").innerHTML =
+      `<span class="inline-flex items-center gap-1">${ic("calendar","h-3.5 w-3.5")}Snapshot <b class="font-medium text-foreground">${esc(m.date)}</b></span>
+       <span aria-hidden="true">·</span><span>${m.dates.length} snapshot day${m.dates.length===1?"":"s"}</span>
+       <span aria-hidden="true">·</span><span>${fmt(m.total)} items</span>
+       ${run ? `<span aria-hidden="true">·</span><span class="inline-flex items-center gap-1.5">Last run <span class="badge ${ok?"badge-ok":"badge-err"}">${esc(run.status||"?")}</span>
+         <span>${esc(run.snapshot_date||"")} · ${fmt(run.rows_written||0)} rows${run.source==="mock"?" · mock":""}</span></span>` : ""}`;
+    $("productsDesc").textContent = `Snapshot ${m.date} · ${fmt(m.total)} items. Filter, sort and export; click a row for its rank history.`;
+  } else {
+    $("status").innerHTML = `<span class="inline-flex items-center gap-1.5">${ic("alert","h-3.5 w-3.5")}No data yet — use <b class="font-medium text-foreground">Pull (mock)</b> to try it with synthetic data.</span>`;
+    $("productsDesc").textContent = "Nothing ingested yet.";
+  }
 }
 
+function renderChips() {
+  const m = state.meta || {signals:{}};
+  $("chips").innerHTML = SIGNALS.map(s =>
+    `<button type="button" class="chip sig-${s}" data-s="${s}" aria-pressed="${state.signals.has(s)}"><span class="sig-dot" aria-hidden="true"></span>${s}<span class="n">${fmt(m.signals[s]||0)}</span></button>`).join("");
+  document.querySelectorAll("#chips .chip").forEach(c => c.onclick = () => toggleSignal(c.dataset.s));
+}
+function toggleSignal(s) {
+  state.signals.has(s) ? state.signals.delete(s) : state.signals.add(s);
+  state.offset = 0; renderChips(); syncKpiState(); load();
+}
+function syncKpiState() {
+  document.querySelectorAll("#kpis .stat[data-s]").forEach(el => el.setAttribute("aria-pressed", String(state.signals.has(el.dataset.s))));
+}
+const KPI_SIGNALS = ["Rocket","Hidden","Rising","Proven","Fading"];
+const SIGNAL_HINT = { Rocket:"Just broke into the top 10", Hidden:"Sells well, few creators", Rising:"Climbing the ranks", Proven:"Consistent seller", Fading:"Losing momentum", Steady:"Holding position", Single:"One day of history" };
+function renderKpis(m) {
+  const tile = (lbl, val, sub, icon) => `<div class="stat"><span class="lbl">${icon?ic(icon,"h-3.5 w-3.5"):""}${lbl}</span><span class="val">${val}</span><span class="sub">${sub}</span></div>`;
+  const sigTile = s => `<button type="button" class="stat sig-${s}" data-s="${s}" aria-pressed="${state.signals.has(s)}" title="Toggle the ${s} filter">
+      <span class="lbl"><span class="sig-dot" aria-hidden="true"></span>${s}</span><span class="val">${fmt(m.signals?.[s]||0)}</span><span class="sub">${SIGNAL_HINT[s]}</span></button>`;
+  $("kpis").innerHTML =
+    tile("Items tracked", fmt(m.total??0), m.date ? `snapshot ${m.date}` : "no snapshot", "layers") +
+    tile("Snapshot days", fmt(m.dates.length), m.dates.length ? `${m.dates[m.dates.length-1]} → ${m.dates[0]}` : "pull data to start", "calendar") +
+    tile("Categories", fmt(m.categories.length), "on this day", "tag") +
+    KPI_SIGNALS.map(sigTile).join("");
+  document.querySelectorAll("#kpis .stat[data-s]").forEach(el => el.onclick = () => toggleSignal(el.dataset.s));
+}
+
+// ---------- table ----------
 function renderHead() {
-  $("head").innerHTML = COLS.map(([k,label,left]) =>
-    `<th class="${left?'l ':''}${state.sort===k?'s':''}" data-k="${k}">${label}${state.sort===k?(state.order==="desc"?" ▼":" ▲"):""}</th>`).join("");
-  document.querySelectorAll("th").forEach(th => th.onclick = () => {
-    const k = th.dataset.k;
+  $("head").innerHTML = COLS.map(([k,label,left]) => {
+    const active = state.sort === k;
+    const icon = active ? (state.order === "desc" ? "arrowDown" : "arrowUp") : "sortNone";
+    return `<th scope="col" class="${left?'l':''}" ${active?`aria-sort="${state.order==="desc"?"descending":"ascending"}"`:""}>
+      <button type="button" class="th-btn ${left?'':'flex-row-reverse -mr-1.5 ml-0'}" data-k="${k}" title="Sort by ${label}">${label}${ic(icon)}</button></th>`;
+  }).join("");
+  document.querySelectorAll("#head .th-btn").forEach(b => b.onclick = () => {
+    const k = b.dataset.k;
     if (state.sort === k) state.order = state.order === "desc" ? "asc" : "desc";
     else { state.sort = k; state.order = ["title","category","rank","signal"].includes(k) ? "asc" : "desc"; }
     state.offset = 0; load();
   });
 }
 
+const skeletonRows = (n=8) => Array.from({length:n}, () => `<tr aria-hidden="true">${COLS.map(([k,,left]) =>
+  `<td class="${left?'l':''}"><span class="skel inline-block h-3 ${k==="title"?"w-56":"w-10"}"></span></td>`).join("")}</tr>`).join("");
+
+function emptyState(kind, msg) {
+  const noData = kind === "nodata";
+  return `<tr><td colspan="${COLS.length}" class="l whitespace-normal"><div class="empty">
+    ${ic(noData ? "db" : "filter", "h-8 w-8")}
+    <h4>${noData ? "No snapshots yet" : "No products match these filters"}</h4>
+    <p>${noData ? "Pull (mock) ingests a synthetic day of data so you can try the dashboard; Pull (live) needs Shopee credentials in .env." : esc(msg || "Try widening the price range, lowering the minimums, or clearing the signal filter.")}</p>
+    ${noData ? `<button type="button" class="btn btn-outline btn-sm mt-2" onclick="pull(true)">Pull (mock)</button>` : `<button type="button" class="btn btn-outline btn-sm mt-2" onclick="$('reset').click()">Reset filters</button>`}
+  </div></td></tr>`;
+}
+
 async function load() {
   renderHead();
-  const r = await fetch("/api/products?" + params({limit:state.limit, offset:state.offset}));
-  if (!r.ok) { $("body").innerHTML = `<tr><td colspan="${COLS.length}" class="l">${esc((await r.json()).detail)}</td></tr>`; $("count").textContent=""; return; }
+  $("tblWrap").setAttribute("aria-busy", "true");
+  if (!$("body").querySelector("tr[data-id]")) $("body").innerHTML = skeletonRows();
+  let r;
+  try { r = await fetch("/api/products?" + params({limit:state.limit, offset:state.offset})); }
+  finally { $("tblWrap").setAttribute("aria-busy", "false"); }
+  if (!r.ok) {
+    const detail = (await r.json()).detail;
+    $("body").innerHTML = emptyState(r.status === 404 ? "nodata" : "error", detail);
+    $("count").textContent = ""; $("page").textContent = "";
+    $("prev").disabled = $("next").disabled = true;
+    return;
+  }
   const data = await r.json();
   $("body").innerHTML = data.items.map(it => `
-    <tr data-id="${it.item_id}">
-      <td>${fmt(it.rank)}</td>
-      <td class="l title" title="${esc(it.title)}">${it.product_link?`<a href="${esc(it.product_link)}" target="_blank" rel="noopener">${esc(it.title)}</a>`:esc(it.title)}<br><small class="muted">${esc(it.shop_name||"")}</small></td>
-      <td class="l">${esc(it.category||"")}</td>
+    <tr data-id="${it.item_id}" tabindex="0" aria-expanded="false">
+      <td class="text-muted-foreground">${fmt(it.rank)}</td>
+      <td class="l max-w-[270px]">
+        <div class="truncate font-medium" title="${esc(it.title)}">${it.product_link?`<a class="hover:underline" href="${esc(it.product_link)}" target="_blank" rel="noopener">${esc(it.title)}</a>`:esc(it.title)}</div>
+        <div class="truncate text-[11px] text-muted-foreground">${esc(it.shop_name||"")}</div>
+      </td>
+      <td class="l text-muted-foreground">${esc(it.category||"")}</td>
       <td>${fmt(it.price,2)}</td>
       <td>${pct(it.commission_rate)}</td>
       <td>${fmt(it.monthly_sales)}</td>
       <td>${fmt(it.est_monthly_revenue)}</td>
-      <td>${it.rating==null?"–":Number(it.rating).toFixed(1)}</td>
+      <td>${rating(it.rating)}</td>
       <td>${fmt(it.partner_count)}</td>
       <td>${fmt(it.gap_score)}</td>
-      <td><span class="bar" style="width:${(it.angel_score||0)*0.5}px"></span>${fmt(it.angel_score)}</td>
+      <td>${meter(it.angel_score)}</td>
       <td>${signed(it.rank_velocity)}</td>
       <td>${signed(it.rank_acceleration)}</td>
-      <td><span class="bar" style="width:${(it.breakout_score||0)*0.5}px"></span>${fmt(it.breakout_score)}</td>
-      <td><span class="sig ${it.signal}">${it.signal}</span></td>
-    </tr>`).join("") || `<tr><td colspan="${COLS.length}" class="l muted">no rows match</td></tr>`;
-  document.querySelectorAll("tr[data-id]").forEach(tr => tr.onclick = e => { if (e.target.tagName!=="A") toggleDetail(tr); });
+      <td>${meter(it.breakout_score)}</td>
+      <td>${badge(it.signal)}</td>
+    </tr>`).join("") || emptyState("nomatch");
+  document.querySelectorAll("tr[data-id]").forEach(tr => {
+    tr.onclick = e => { if (!e.target.closest("a")) toggleDetail(tr); };
+    tr.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target === tr) { e.preventDefault(); toggleDetail(tr); } };
+  });
   const from = data.total ? data.offset+1 : 0, to = Math.min(data.offset+data.limit, data.total);
-  $("count").textContent = `${from}–${to} of ${data.total.toLocaleString()} · ${data.date}`;
-  $("page").textContent = `page ${Math.floor(data.offset/data.limit)+1} / ${Math.max(1,Math.ceil(data.total/data.limit))}`;
+  $("count").innerHTML = `Showing <b class="font-medium text-foreground tabular-nums">${fmt(from)}–${fmt(to)}</b> of <b class="font-medium text-foreground tabular-nums">${fmt(data.total)}</b> · ${esc(data.date)}`;
+  $("page").textContent = `Page ${Math.floor(data.offset/data.limit)+1} of ${Math.max(1,Math.ceil(data.total/data.limit))}`;
   $("prev").disabled = data.offset === 0; $("next").disabled = to >= data.total;
 }
 
+// ---------- detail: sparkline + history ----------
 function sparkline(hist) {
   const pts = hist.filter(h => h.rank != null);
-  if (pts.length < 2) return "<small class=muted>not enough history for a chart</small>";
-  const W=300,H=70,P=6, ranks = pts.map(h=>h.rank), lo=Math.min(...ranks), hi=Math.max(...ranks);
-  const x = i => P + i*(W-2*P)/(pts.length-1), y = r => hi===lo ? H/2 : P + (r-lo)*(H-2*P)/(hi-lo);
-  const d = pts.map((h,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(h.rank).toFixed(1)}`).join(" ");
-  return `<svg width="${W}" height="${H}" style="background:#fff;border:1px solid var(--line);border-radius:6px">
-    <path d="${d}" fill="none" stroke="#ee4d2d" stroke-width="2"/>
-    ${pts.map((h,i)=>`<circle cx="${x(i)}" cy="${y(h.rank)}" r="2.5" fill="#ee4d2d"><title>${h.snapshot_date}: rank ${h.rank}</title></circle>`).join("")}
-  </svg><div class="muted" style="font-size:11px;margin-top:2px">rank over ${pts.length} days · best #${lo}, worst #${hi} · lower is better</div>`;
+  if (pts.length < 2) return `<div class="empty py-8">${ic("trend")}<p>Not enough history for a chart yet — needs two or more days.</p></div>`;
+  const W=300,H=96,PX=10,PT=10,PB=18, ranks = pts.map(h=>h.rank), lo=Math.min(...ranks), hi=Math.max(...ranks);
+  const x = i => PX + i*(W-2*PX)/(pts.length-1), y = r => hi===lo ? (PT+(H-PB))/2 : PT + (r-lo)*(H-PT-PB)/(hi-lo);
+  const line = pts.map((h,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(h.rank).toFixed(1)}`).join(" ");
+  const area = `${line} L${x(pts.length-1).toFixed(1)},${H-PB} L${x(0).toFixed(1)},${H-PB} Z`;
+  const last = pts.length-1;
+  const data = esc(JSON.stringify(pts.map(h => ({d:h.snapshot_date, r:h.rank}))));
+  return `<div class="spark relative" data-pts="${data}" data-w="${W}" data-px="${PX}">
+    <svg viewBox="0 0 ${W} ${H}" class="block h-auto w-full" role="img" aria-label="Rank over ${pts.length} days, best #${lo}, worst #${hi}">
+      <line x1="${PX}" x2="${W-PX}" y1="${PT}" y2="${PT}" stroke="hsl(var(--border))" stroke-dasharray="2 3"/>
+      <line x1="${PX}" x2="${W-PX}" y1="${H-PB}" y2="${H-PB}" stroke="hsl(var(--border))"/>
+      <path d="${area}" fill="hsl(var(--primary))" fill-opacity="0.08"/>
+      <path d="${line}" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <line class="cross" x1="0" x2="0" y1="${PT}" y2="${H-PB}" stroke="hsl(var(--muted-foreground))" stroke-dasharray="3 3" style="display:none"/>
+      ${pts.map((h,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(h.rank).toFixed(1)}" r="${i===last?4:2.5}" fill="${i===last?"hsl(var(--primary))":"hsl(var(--card))"}" stroke="hsl(var(--primary))" stroke-width="${i===last?2:1.5}"><title>${h.snapshot_date}: rank #${h.rank}</title></circle>`).join("")}
+      <text x="${PX}" y="${H-4}" font-size="9" fill="hsl(var(--muted-foreground))">${pts[0].snapshot_date.slice(5)}</text>
+      <text x="${W-PX}" y="${H-4}" font-size="9" text-anchor="end" fill="hsl(var(--muted-foreground))">${pts[last].snapshot_date.slice(5)}</text>
+    </svg>
+    <div class="spark-tip absolute top-0 hidden rounded-md border bg-popover px-2 py-1 text-[11px] shadow-md tabular-nums"></div>
+    <div class="mt-1 flex items-center justify-between gap-2 whitespace-nowrap text-[11px] text-muted-foreground"><span>Rank · up is better</span><span>best <b class="font-medium text-foreground">#${lo}</b> · worst <b class="font-medium text-foreground">#${hi}</b></span></div>
+  </div>`;
+}
+function bindSparks(root) {
+  root.querySelectorAll(".spark").forEach(sp => {
+    const pts = JSON.parse(sp.dataset.pts), W = +sp.dataset.w, PX = +sp.dataset.px;
+    const svg = sp.querySelector("svg"), cross = sp.querySelector(".cross"), tip = sp.querySelector(".spark-tip");
+    const hide = () => { cross.style.display = "none"; tip.classList.add("hidden"); };
+    svg.addEventListener("mousemove", e => {
+      const rect = svg.getBoundingClientRect();
+      const xu = (e.clientX - rect.left) / rect.width * W;
+      const i = Math.max(0, Math.min(pts.length-1, Math.round((xu-PX)/((W-2*PX)/(pts.length-1)))));
+      const xs = PX + i*(W-2*PX)/(pts.length-1);
+      cross.setAttribute("x1", xs); cross.setAttribute("x2", xs); cross.style.display = "";
+      const prev = pts[i-1], delta = prev ? prev.r - pts[i].r : null;
+      tip.innerHTML = `<span class="text-muted-foreground">${pts[i].d}</span> · rank <b class="font-semibold">#${pts[i].r}</b>${delta==null?"":` <span class="${delta>0?"pos":delta<0?"neg":"muted"}">${delta>0?"+":""}${delta}</span>`}`;
+      tip.classList.remove("hidden");
+      const frac = xs / W;
+      tip.style.left = frac > 0.6 ? "auto" : `${frac*100}%`;
+      tip.style.right = frac > 0.6 ? `${(1-frac)*100}%` : "auto";
+    });
+    svg.addEventListener("mouseleave", hide);
+  });
 }
 
 function detailHtml(d) {
-  return `<div class="hist">
-    <div>${sparkline(d.history)}<div style="margin-top:6px;font-size:12px">
-      item ${d.item.item_id} · shop ${esc(d.item.shop_name||d.item.shop_id||"")} · headroom ${fmt(d.item.headroom)} · gap pct ${fmt(d.item.gap_percentile)}
-      ${d.item.product_link?` · <a href="${esc(d.item.product_link)}" target="_blank" rel="noopener">product page</a>`:""}
-      ${d.item.offer_link?` · <a href="${esc(d.item.offer_link)}" target="_blank" rel="noopener">affiliate link</a>`:""}</div></div>
-    <div style="overflow:auto"><table><thead><tr><th class=l>date</th><th>rank</th><th>price</th><th>comm %</th><th>mo. sales</th><th>rating</th><th>velocity</th><th>accel</th><th>angel</th><th>breakout</th><th>signal</th></tr></thead>
-    <tbody>${d.history.slice().reverse().map(h=>`<tr><td class=l>${h.snapshot_date}</td><td>${fmt(h.rank)}</td><td>${fmt(h.price,2)}</td><td>${pct(h.commission_rate)}</td><td>${fmt(h.monthly_sales)}</td><td>${h.rating==null?"–":Number(h.rating).toFixed(1)}</td><td>${signed(h.rank_velocity)}</td><td>${signed(h.rank_acceleration)}</td><td>${fmt(h.angel_score)}</td><td>${fmt(h.breakout_score)}</td><td><span class="sig ${h.signal}">${h.signal}</span></td></tr>`).join("")}</tbody></table></div>
+  const it = d.item;
+  const link = (href, label) => href ? `<a class="btn btn-outline btn-sm" href="${esc(href)}" target="_blank" rel="noopener">${label}${ic("ext","h-3.5 w-3.5")}</a>` : "";
+  return `<div class="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
+    <div class="flex min-w-0 flex-col gap-3">
+      <div class="rounded-lg border bg-card p-3">${sparkline(d.history)}</div>
+      <dl class="dl rounded-lg border bg-card p-3">
+        <dt>Item ID</dt><dd>${esc(it.item_id)}</dd>
+        <dt>Shop</dt><dd title="${esc(it.shop_name||it.shop_id||"")}">${esc(it.shop_name||it.shop_id||"–")}</dd>
+        <dt>Category</dt><dd>${esc(it.category||"–")}</dd>
+        <dt>Cumulative sales</dt><dd>${fmt(it.cumulative_sales)}</dd>
+        <dt>Creators</dt><dd>${fmt(it.partner_count)}</dd>
+        <dt>Headroom</dt><dd>${fmt(it.headroom)}</dd>
+        <dt>Gap percentile</dt><dd>${fmt(it.gap_percentile)}</dd>
+        <dt>History</dt><dd>${fmt(it.history_days)} day${it.history_days===1?"":"s"}</dd>
+      </dl>
+      ${(it.product_link||it.offer_link) ? `<div class="flex flex-wrap gap-2">${link(it.product_link,"Product page")}${link(it.offer_link,"Affiliate link")}</div>` : ""}
+    </div>
+    <div class="min-w-0 overflow-x-auto rounded-lg border bg-card">
+      <table class="mini min-w-[640px]"><thead><tr><th class="l">Date</th><th>Rank</th><th>Price</th><th>Comm %</th><th>Mo. sales</th><th>Rating</th><th>Velocity</th><th>Accel</th><th>Angel</th><th>Breakout</th><th>Signal</th></tr></thead>
+      <tbody>${d.history.slice().reverse().map(h=>`<tr><td class="l text-muted-foreground">${esc(h.snapshot_date)}</td><td class="font-medium">${fmt(h.rank)}</td><td>${fmt(h.price,2)}</td><td>${pct(h.commission_rate)}</td><td>${fmt(h.monthly_sales)}</td><td>${rating(h.rating)}</td><td>${signed(h.rank_velocity)}</td><td>${signed(h.rank_acceleration)}</td><td>${fmt(h.angel_score)}</td><td>${fmt(h.breakout_score)}</td><td>${badge(h.signal)}</td></tr>`).join("")}</tbody></table>
+    </div>
   </div>`;
 }
 
 async function toggleDetail(tr) {
   const next = tr.nextElementSibling;
-  if (next && next.classList.contains("detail")) { next.remove(); return; }
+  if (next && next.classList.contains("detail")) { next.remove(); tr.classList.remove("expanded"); tr.setAttribute("aria-expanded","false"); return; }
   const d = await (await fetch("/api/products/"+tr.dataset.id)).json();
   const row = document.createElement("tr"); row.className = "detail";
-  row.innerHTML = `<td colspan="${COLS.length}">${detailHtml(d)}</td>`;
-  tr.after(row);
+  row.innerHTML = `<td colspan="${COLS.length}"><div class="detail-inner">${detailHtml(d)}</div></td>`;
+  tr.after(row); tr.classList.add("expanded"); tr.setAttribute("aria-expanded","true");
+  sizeDetails(); bindSparks(row);
 }
+// The table may be wider than its scrolling card; pin each detail panel to the visible width so nothing is cut off.
+function sizeDetails() {
+  const w = $("tblWrap").clientWidth;
+  document.querySelectorAll(".detail-inner").forEach(el => { el.style.width = w + "px"; });
+}
+window.addEventListener("resize", sizeDetails);
 
+// ---------- dialogs ----------
+let lastFocus = null;
+function closeModal() {
+  if ($("modal").dataset.open !== "1") return;
+  $("modal").dataset.open = "0";
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
 async function openModal(itemId) {
   const d = await (await fetch("/api/products/"+itemId)).json();
-  $("modalBox").innerHTML = `<h3><b>${esc(d.item.title)}</b><span class="sig ${d.item.signal}">${d.item.signal}</span><button id="modalClose">✕</button></h3>${detailHtml(d)}`;
-  $("modal").classList.add("open");
-  $("modalClose").onclick = () => $("modal").classList.remove("open");
+  lastFocus = document.activeElement;
+  $("modalBox").innerHTML = `
+    <div class="flex items-start gap-3 border-b p-4">
+      <div class="min-w-0 flex-1">
+        <h3 id="modalTitle" class="flex flex-wrap items-center gap-2 text-base font-semibold leading-6"><span class="min-w-0 truncate">${esc(d.item.title)}</span>${badge(d.item.signal)}</h3>
+        <p class="mt-0.5 text-xs text-muted-foreground">Rank <b class="font-medium text-foreground tabular-nums">#${fmt(d.item.rank)}</b> · ${fmt(d.item.monthly_sales)} sales/mo · ${pct(d.item.commission_rate)} commission · price ${fmt(d.item.price,2)} · ${esc(d.item.shop_name||"")}</p>
+      </div>
+      <button id="modalClose" class="btn btn-ghost btn-icon btn-sm -mr-1 -mt-1" aria-label="Close">${ic("x")}</button>
+    </div>
+    <div class="p-4">${detailHtml(d)}</div>`;
+  $("modal").dataset.open = "1";
+  $("modalClose").onclick = closeModal;
+  $("modalClose").focus();
+  bindSparks($("modalBox"));
 }
-$("modal").onclick = e => { if (e.target.id === "modal") $("modal").classList.remove("open"); };
-document.addEventListener("keydown", e => { if (e.key === "Escape") $("modal").classList.remove("open"); });
+$("modal").onclick = e => { if (e.target.id === "modal") closeModal(); };
 
-function listPanel(title, sub, items, valueFn, sortKey) {
-  const rows = items.map((it, i) => `<li data-id="${it.item_id}">
-      <span class="n">${i+1}</span>
-      <span class="t" title="${esc(it.title)}">${esc(it.title)}<small>${esc(it.category||"")} · #${fmt(it.rank)} · <span class="sig ${it.signal}" style="padding:0 6px">${it.signal}</span></small></span>
-      <span class="v">${valueFn(it)}</span></li>`).join("") || `<li class="muted">no data</li>`;
-  return `<div class="panel"><h2>${title} <span>${sub}</span>${sortKey?`<a data-sort="${sortKey}">view all ›</a>`:""}</h2><ol>${rows}</ol></div>`;
+let confirmResolve = null;
+function confirmDialog() {
+  return new Promise(res => {
+    confirmResolve = res; lastFocus = document.activeElement;
+    $("confirm").dataset.open = "1"; $("confirmCancel").focus();
+  });
 }
+function settleConfirm(v) {
+  if ($("confirm").dataset.open !== "1") return;
+  $("confirm").dataset.open = "0";
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+  if (confirmResolve) { confirmResolve(v); confirmResolve = null; }
+}
+$("confirmCancel").onclick = () => settleConfirm(false);
+$("confirmOk").onclick = () => settleConfirm(true);
+$("confirm").onclick = e => { if (e.target.id === "confirm") settleConfirm(false); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeModal(); settleConfirm(false); } });
+
+// ---------- home ----------
+function listPanel(title, sub, items, valueFn, sortKey, icon) {
+  const rows = items.map((it, i) => `<li data-id="${it.item_id}" tabindex="0" role="button">
+      <span class="n">${i+1}</span>
+      <span class="t"><b title="${esc(it.title)}">${esc(it.title)}</b><small><span class="truncate">${esc(it.category||"")} · #${fmt(it.rank)}</span>${badge(it.signal, "px-1.5 py-0 text-[10px]")}</small></span>
+      <span class="v">${valueFn(it)}</span></li>`).join("") || `<li class="cursor-default justify-center py-8 text-xs text-muted-foreground hover:bg-transparent">No data for this day</li>`;
+  return `<div class="card flex min-w-0 flex-col">
+    <div class="card-head items-center pb-3"><div><h3 class="card-title flex items-center gap-1.5">${ic(icon,"h-3.5 w-3.5 text-muted-foreground")}${title}</h3><p class="card-desc">${sub}</p></div>
+      ${sortKey?`<button type="button" class="btn btn-ghost btn-sm -mr-2 text-primary" data-sort="${sortKey}">View all${ic("chevronRight","h-3.5 w-3.5")}</button>`:""}</div>
+    <ol class="list border-t">${rows}</ol></div>`;
+}
+const homeSkeleton = () => `<div class="card md:col-span-2 xl:col-span-4 p-4"><span class="skel block h-4 w-40"></span><div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">${Array(4).fill(`<span class="skel block h-28"></span>`).join("")}</div></div>` +
+  Array(4).fill(`<div class="card p-4"><span class="skel block h-4 w-32"></span>${Array(6).fill(`<span class="skel mt-3 block h-3"></span>`).join("")}</div>`).join("");
 
 async function loadHome() {
   const d = $("date").value;
+  if (!$("home").children.length) $("home").innerHTML = homeSkeleton();
   const r = await fetch("/api/home" + (d ? "?date="+d : ""));
-  if (!r.ok) { $("home").innerHTML = ""; return; }
+  if (!r.ok) {
+    $("home").innerHTML = `<div class="card md:col-span-2 xl:col-span-4"><div class="empty">${ic("db")}<h4>No snapshots yet</h4><p>Pull (mock) to try the dashboard with a synthetic day of data. Suggestions and top lists appear here once a snapshot exists.</p><button type="button" class="btn btn-outline btn-sm mt-2" onclick="pull(true)">Pull (mock)</button></div></div>`;
+    return;
+  }
   const h = await r.json();
-  const picks = h.suggestions.map(it => `<div class="pick" data-id="${it.item_id}">
-      <div class="head"><b title="${esc(it.title)}">${esc(it.title)}</b><span class="sig ${it.signal}">${it.signal}</span></div>
-      <ul>${it.reasons.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
-      <div class="kpis"><span>rank <b>#${fmt(it.rank)}</b></span><span>sales <b>${fmt(it.monthly_sales)}</b>/mo</span><span>comm <b>${pct(it.commission_rate)}</b></span><span>price <b>${fmt(it.price,0)}</b></span><span>score <b>${fmt(it.suggest_score)}</b></span></div>
-    </div>`).join("") || `<div class="muted">nothing to suggest yet – need at least two days of snapshots</div>`;
+  const picks = h.suggestions.map(it => `<div class="pick" data-id="${it.item_id}" tabindex="0" role="button">
+      <div class="head"><b title="${esc(it.title)}">${esc(it.title)}</b>${badge(it.signal)}</div>
+      <ul>${it.reasons.map(x=>`<li>${ic("check")}<span>${esc(x)}</span></li>`).join("")}</ul>
+      <div class="kpis">
+        <div><div class="lbl">Rank</div><div class="val">#${fmt(it.rank)}</div></div>
+        <div><div class="lbl">Sales/mo</div><div class="val">${compact(it.monthly_sales)}</div></div>
+        <div><div class="lbl">Comm</div><div class="val">${pct(it.commission_rate)}</div></div>
+        <div><div class="lbl">Price</div><div class="val">${compact(it.price)}</div></div>
+        <div><div class="lbl">Score</div><div class="val text-primary">${fmt(it.suggest_score)}</div></div>
+      </div>
+    </div>`).join("") || `<div class="empty md:col-span-2 xl:col-span-4">${ic("sparkles")}<h4>Nothing to suggest yet</h4><p>Suggestions need at least two days of snapshots so velocity and breakout can be scored.</p></div>`;
   $("home").innerHTML =
-    `<div class="panel wide"><h2>Suggested for you <span>angel + breakout score, signal bonus, no Fading</span></h2><div class="picks">${picks}</div></div>` +
-    listPanel("Most sales", "monthly", h.top_sales, it => `${fmt(it.monthly_sales)}<small>${pct(it.commission_rate)} comm</small>`, "monthly_sales") +
-    listPanel("Highest commission", "with sales > 0", h.top_commission, it => `${pct(it.commission_rate)}<small>${fmt(it.monthly_sales)} sales</small>`, "commission_rate") +
-    listPanel("Biggest revenue pool", "price × comm × sales", h.top_revenue, it => `${fmt(it.est_monthly_revenue)}<small>${pct(it.commission_rate)} · ${fmt(it.monthly_sales)} sales</small>`, "est_monthly_revenue") +
-    listPanel("Fastest climbers", `rank change, ${h.movers.length ? "last window" : "needs history"}`, h.movers, it => `${signed(it.rank_velocity)}<small>now #${fmt(it.rank)}</small>`, "rank_velocity");
-  document.querySelectorAll("#home [data-id]").forEach(el => el.onclick = e => { if (e.target.tagName!=="A") openModal(el.dataset.id); });
-  document.querySelectorAll("#home a[data-sort]").forEach(a => a.onclick = () => {
+    `<div class="card md:col-span-2 xl:col-span-4">
+      <div class="card-head items-center"><div><h3 class="card-title flex items-center gap-1.5">${ic("sparkles","h-3.5 w-3.5 text-primary")}Suggested for you</h3>
+        <p class="card-desc">Angel + breakout score with a signal bonus; Fading items are excluded. Click a card for its history.</p></div>
+        <span class="badge badge-neutral">${h.suggestions.length} picks</span></div>
+      <div class="grid gap-3 p-4 pt-2 md:grid-cols-2 xl:grid-cols-4">${picks}</div>
+    </div>` +
+    listPanel("Most sales", "Monthly units", h.top_sales, it => `<b>${fmt(it.monthly_sales)}</b><small>${pct(it.commission_rate)} comm</small>`, "monthly_sales", "trend") +
+    listPanel("Highest commission", "Among items with sales", h.top_commission, it => `<b>${pct(it.commission_rate)}</b><small>${fmt(it.monthly_sales)} sales</small>`, "commission_rate", "tag") +
+    listPanel("Biggest revenue pool", "Price × commission × sales", h.top_revenue, it => `<b>${compact(it.est_monthly_revenue)}</b><small>${pct(it.commission_rate)} · ${compact(it.monthly_sales)} sales</small>`, "est_monthly_revenue", "layers") +
+    listPanel("Fastest climbers", h.movers.length ? "Rank change over the last window" : "Needs more history", h.movers, it => `<b>${signed(it.rank_velocity)}</b><small>now #${fmt(it.rank)}</small>`, "rank_velocity", "arrowUp");
+  document.querySelectorAll("#home [data-id]").forEach(el => {
+    el.onclick = e => { if (!e.target.closest("a")) openModal(el.dataset.id); };
+    el.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); openModal(el.dataset.id); } };
+  });
+  document.querySelectorAll("#home [data-sort]").forEach(a => a.onclick = () => {
     state.sort = a.dataset.sort; state.order = "desc"; state.offset = 0; state.signals.clear();
     if (a.dataset.sort === "commission_rate") $("min_sales").value = 1;
-    loadMeta(true).then(load); $("tbl").scrollIntoView({behavior:"smooth"});
+    loadMeta(true).then(load); $("tbl").scrollIntoView({behavior:"smooth", block:"start"});
   });
 }
 
-$("homeToggle").onclick = () => {
-  const hidden = $("home").style.display === "none";
-  $("home").style.display = hidden ? "" : "none";
-  $("homeToggle").textContent = hidden ? "▾ hide home panels" : "▸ show home panels";
-  try { localStorage.setItem("homeHidden", hidden ? "0" : "1"); } catch (e) {}
-};
-try { if (localStorage.getItem("homeHidden") === "1") { $("home").style.display = "none"; $("homeToggle").textContent = "▸ show home panels"; } } catch (e) {}
+// ---------- home toggle (remembered) ----------
+function setHomeHidden(hidden, persist=true) {
+  $("home").classList.toggle("hidden", hidden);
+  $("homeToggle").setAttribute("aria-expanded", String(!hidden));
+  $("homeToggleText").textContent = hidden ? "Show home panels" : "Hide home panels";
+  if (persist) try { localStorage.setItem("homeHidden", hidden ? "1" : "0"); } catch (e) {}
+}
+$("homeToggle").onclick = () => setHomeHidden(!$("home").classList.contains("hidden"));
+try { if (localStorage.getItem("homeHidden") === "1") setHomeHidden(true, false); } catch (e) {}
 
+// ---------- theme ----------
+function applyTheme(dark) {
+  document.documentElement.classList.toggle("dark", dark);
+  $("themeToggle").setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+  $("themeToggle").title = dark ? "Switch to light mode" : "Switch to dark mode";
+}
+applyTheme(document.documentElement.classList.contains("dark"));
+$("themeToggle").onclick = () => {
+  const dark = !document.documentElement.classList.contains("dark");
+  applyTheme(dark);
+  try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch (e) {}
+};
+try {
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => { try { if (!localStorage.getItem("theme")) applyTheme(e.matches); } catch (_) {} });
+} catch (e) {}
+
+// ---------- actions ----------
 async function pull(mock) {
-  const b = mock ? $("pullMock") : $("pullLive"); b.disabled = true; b.textContent = "pulling…";
+  const b = mock ? $("pullMock") : $("pullLive"); const label = b.querySelector("span");
+  const old = label.textContent; b.disabled = true; label.textContent = "Pulling…"; b.querySelector("svg").classList.add("spin");
   try {
     const p = new URLSearchParams(); if (mock) p.set("mock","1"); const d = $("date").value; if (d && mock) p.set("date", d);
     const r = await fetch("/api/ingest?"+p, {method:"POST"}); const j = await r.json();
-    alert(r.ok ? `ingested ${j.rows} rows for ${j.snapshot_date} (${j.source})` : `failed: ${j.detail}`);
+    r.ok ? toast(`Ingested ${fmt(j.rows)} rows for ${j.snapshot_date} (${j.source})`) : toast(`Ingest failed: ${j.detail}`, "err");
     await loadMeta(false); await load(); await loadHome();
-  } finally { b.disabled = false; b.textContent = mock ? "Pull (mock)" : "Pull (live)"; }
+  } catch (e) { toast(`Ingest failed: ${e.message || e}`, "err"); }
+  finally { b.disabled = false; label.textContent = old; b.querySelector("svg").classList.remove("spin"); }
 }
 
 $("apply").onclick = () => { state.offset = 0; load(); };
-$("reset").onclick = () => { for (const k of ["category","min_price","max_price","min_commission","min_sales","min_rating","q"]) $(k).value=""; state.signals.clear(); state.offset=0; loadMeta(true).then(load); };
+$("reset").onclick = () => { for (const k of FILTER_IDS) $(k).value=""; state.signals.clear(); state.offset=0; loadMeta(true).then(load); };
 $("date").onchange = () => { state.offset = 0; loadMeta(true).then(load); loadHome(); };
 $("prev").onclick = () => { state.offset = Math.max(0, state.offset - state.limit); load(); };
 $("next").onclick = () => { state.offset += state.limit; load(); };
@@ -311,12 +819,12 @@ $("json").onclick = () => window.open("/api/export.json?" + params());
 $("pullMock").onclick = () => pull(true);
 $("pullLive").onclick = () => pull(false);
 $("purgeMock").onclick = async () => {
-  if (!confirm("Delete every synthetic demo row? Live data is untouched.")) return;
+  if (!await confirmDialog()) return;
   const r = await fetch("/api/purge-mock", {method:"POST"}); const j = await r.json();
-  alert(r.ok ? `deleted ${j.deleted} mock rows` : `failed: ${j.detail}`);
+  r.ok ? toast(`Deleted ${fmt(j.deleted)} mock rows`) : toast(`Failed: ${j.detail}`, "err");
   await loadMeta(false); await load(); await loadHome();
 };
-document.querySelectorAll(".filters input").forEach(i => i.addEventListener("keydown", e => { if (e.key==="Enter") { state.offset=0; load(); } }));
+document.querySelectorAll(".filters input").forEach(i => i.addEventListener("keydown", e => { if (e.key==="Enter") { e.preventDefault(); state.offset=0; load(); } }));
 loadMeta().then(load).then(loadHome);
 </script>
 </body>
