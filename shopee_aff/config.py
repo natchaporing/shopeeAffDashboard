@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     shopee_max_pages: int = Field(default=20, ge=1)
     shopee_category_ids: str = ""
     shopee_mock: bool = False
+    # On startup, if the database has no snapshots yet, backfill this many days of synthetic data (0 = off).
+    seed_mock_days: int = Field(default=0, ge=0, le=60)
 
     # Storage
     database_url: str = "postgresql://postgres:postgres@localhost:5432/shopee_aff"

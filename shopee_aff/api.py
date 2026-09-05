@@ -29,12 +29,13 @@ from psycopg import sql
 
 from .config import get_settings
 from .db import connect, migrate
-from .ingest import run_ingest
+from .ingest import purge_mock, run_ingest, seed_mock_if_empty
 from .home import build_suggestions
 from .scheduler import build_scheduler
 from .signals import SIGNALS
 
 log = logging.getLogger(__name__)
+_ingest_lock = threading.Lock()
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 SORTABLE = {
@@ -63,11 +64,27 @@ def _row(rec: dict) -> dict:
     return {k: _clean(v) for k, v in rec.items()}
 
 
+def _seed_in_background(days: int) -> None:
+    def run() -> None:
+        with _ingest_lock:
+            try:
+                n = seed_mock_if_empty(days)
+                log.info("startup seed: %s", f"{n} days of mock data written" if n else "database not empty, skipped")
+            except Exception:  # noqa: BLE001
+                log.exception("startup seed failed")
+
+    threading.Thread(target=run, name="seed-mock", daemon=True).start()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not logging.getLogger().handlers:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     settings = get_settings()
     try:
         migrate(settings.database_url)
+        if settings.seed_mock_days:
+            _seed_in_background(settings.seed_mock_days)
     except Exception as exc:  # noqa: BLE001
         log.error("database not reachable at startup: %s", exc)
     scheduler = build_scheduler(settings) if settings.ingest_enabled else None
@@ -299,9 +316,6 @@ def export_csv(
                              headers={"Content-Disposition": f'attachment; filename="shopee_{d.isoformat()}.csv"'})
 
 
-_ingest_lock = threading.Lock()
-
-
 @app.post("/api/ingest")
 def trigger_ingest(mock: bool = False, snapshot_date: date | None = Query(None, alias="date")):
     if not _ingest_lock.acquire(blocking=False):
@@ -315,5 +329,16 @@ def trigger_ingest(mock: bool = False, snapshot_date: date | None = Query(None, 
         raise
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(500, f"ingest failed: {type(exc).__name__}: {exc}") from exc
+    finally:
+        _ingest_lock.release()
+
+
+@app.post("/api/purge-mock")
+def purge_mock_rows():
+    """Delete every synthetic (mock) row so only live Shopee data remains."""
+    if not _ingest_lock.acquire(blocking=False):
+        raise HTTPException(409, "an ingest is already running")
+    try:
+        return {"deleted": purge_mock(get_settings())}
     finally:
         _ingest_lock.release()

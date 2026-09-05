@@ -211,6 +211,38 @@ def run_ingest(snapshot_date: date | None = None, mock: bool | None = None, sett
             raise
 
 
+MOCK_ID_LO, MOCK_ID_HI = 20_000_000_000, 20_001_000_000  # id range used by mock_source
+
+
+def purge_mock(settings: Settings | None = None) -> int:
+    """Delete every synthetic row (mock item-id range) so real data stands alone."""
+    settings = settings or get_settings()
+    with connect(settings.database_url) as conn:
+        n = conn.execute(
+            "DELETE FROM product_snapshots WHERE item_id >= %s AND item_id < %s", (MOCK_ID_LO, MOCK_ID_HI)
+        ).rowcount
+        conn.execute("DELETE FROM ingest_runs WHERE source = 'mock'")
+        conn.commit()
+    log.info("purged %s mock snapshot rows", n)
+    return n
+
+
+def seed_mock_if_empty(days: int, settings: Settings | None = None, end: date | None = None) -> int:
+    """Backfill `days` days of synthetic history, but only when the database has no snapshots at all."""
+    settings = settings or get_settings()
+    if days <= 0:
+        return 0
+    migrate(settings.database_url)
+    with connect(settings.database_url) as conn:
+        if conn.execute("SELECT 1 FROM product_snapshots LIMIT 1").fetchone():
+            return 0
+    end = end or today_utc()
+    for i in range(days - 1, -1, -1):
+        run_ingest(end - timedelta(days=i), mock=True, settings=settings)
+    log.info("seeded %s days of mock data ending %s", days, end)
+    return days
+
+
 def recompute(snapshot_date: date | None = None, settings: Settings | None = None) -> int:
     settings = settings or get_settings()
     snapshot_date = snapshot_date or today_utc()
@@ -227,7 +259,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--mock", action="store_true", help="use synthetic data instead of the live API")
     p.add_argument("--recompute", action="store_true", help="recompute metrics/signals for --date, no fetch")
     p.add_argument("--backfill-mock", type=int, metavar="DAYS", help="ingest DAYS days of synthetic history ending at --date")
+    p.add_argument("--purge-mock", action="store_true", help="delete all synthetic rows")
     args = p.parse_args(argv)
+
+    if args.purge_mock:
+        print(f"deleted {purge_mock()} mock rows")
+        return
 
     if args.recompute:
         print(f"recomputed metrics for {recompute(args.date)} rows")

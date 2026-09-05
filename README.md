@@ -36,6 +36,10 @@ python -m uvicorn shopee_aff.api:app --port 8000
 
 `make probe | ingest | backfill-mock | recompute | serve | schedule | test` wrap the same commands.
 
+For a hosted demo set `SEED_MOCK_DAYS=10`: on startup an empty database is backfilled with synthetic
+history. Remove it again with the **Clear mock** button, `POST /api/purge-mock`, or
+`python -m shopee_aff.ingest --purge-mock` (mock rows live in a reserved item-id range).
+
 ## Layout
 
 | Path | Purpose |

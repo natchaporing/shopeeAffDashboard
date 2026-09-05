@@ -64,3 +64,14 @@ def test_home_endpoint(client):
     assert h["top_commission"][0]["commission_rate"] >= h["top_commission"][-1]["commission_rate"]
     assert h["suggestions"] and all(s["signal"] != "Fading" and s["reasons"] for s in h["suggestions"])
     assert all(m["rank_velocity"] > 0 for m in h["movers"])
+
+
+def test_seed_and_purge_mock(client, settings):
+    from datetime import date
+    from shopee_aff.ingest import purge_mock, seed_mock_if_empty
+    assert seed_mock_if_empty(3, settings, end=date(2026, 3, 10)) == 0  # not empty -> skipped
+    assert client.post("/api/purge-mock").json()["deleted"] > 0
+    assert client.get("/api/meta").json()["latest"] is None
+    assert seed_mock_if_empty(3, settings, end=date(2026, 3, 10)) == 3
+    assert len(client.get("/api/meta").json()["dates"]) == 3
+    assert purge_mock(settings) == 900

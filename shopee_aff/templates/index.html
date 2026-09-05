@@ -82,6 +82,7 @@
   <span id="status">loading…</span>
   <button id="pullMock" title="Ingest synthetic data for the selected date">Pull (mock)</button>
   <button id="pullLive" title="Ingest live data from the Shopee Open API">Pull (live)</button>
+  <button id="purgeMock" title="Delete all synthetic demo rows">Clear mock</button>
 </header>
 
 <div class="home" id="home"></div>
@@ -309,6 +310,12 @@ $("csv").onclick = () => window.open("/api/export.csv?" + params());
 $("json").onclick = () => window.open("/api/export.json?" + params());
 $("pullMock").onclick = () => pull(true);
 $("pullLive").onclick = () => pull(false);
+$("purgeMock").onclick = async () => {
+  if (!confirm("Delete every synthetic demo row? Live data is untouched.")) return;
+  const r = await fetch("/api/purge-mock", {method:"POST"}); const j = await r.json();
+  alert(r.ok ? `deleted ${j.deleted} mock rows` : `failed: ${j.detail}`);
+  await loadMeta(false); await load(); await loadHome();
+};
 document.querySelectorAll(".filters input").forEach(i => i.addEventListener("keydown", e => { if (e.key==="Enter") { state.offset=0; load(); } }));
 loadMeta().then(load).then(loadHome);
 </script>
