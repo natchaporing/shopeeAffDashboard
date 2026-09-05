@@ -147,3 +147,16 @@ TEST_DATABASE_URL=postgresql://.../shopee_aff_test python -m pytest -q   # + end
 2. Region endpoint -> `SHOPEE_REGION`; the probe prints the host it hit.
 3. Does the region expose an item-feed query with cumulative sales / creator counts? -> `--introspect`.
 4. Signal thresholds -> tune in `.env`, then `make recompute`.
+
+## Deploying on Railway
+
+`railway.json` + `Procfile` describe the web service (uvicorn on `$PORT`, healthcheck on `/health`).
+Add a Postgres service, then set on the web service:
+
+```
+DATABASE_URL=postgresql://postgres:<password>@<postgres private host>:5432/shopee_aff
+SHOPEE_APP_ID=...   SHOPEE_APP_SECRET=...   SHOPEE_REGION=co.th
+INGEST_ENABLED=1    INGEST_HOUR=23   # UTC on Railway (23:00 UTC = 06:00 Bangkok)
+```
+
+Migrations run on startup. Keep one replica so the in-process scheduler pulls exactly once a day.
