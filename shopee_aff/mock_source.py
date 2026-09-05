@@ -75,7 +75,7 @@ def generate(snapshot_date: date, n: int = 300) -> Iterator[dict[str, Any]]:
             "cumulativeSales": it["cumulativeSales"] + sales * max(t, 0) // 30,
             "partnerCount": it["partnerCount"],
             "ratingStar": str(it["ratingStar"]),
-            "imageUrl": f"https://cf.shopee.example/{it['itemId']}.jpg",
+            "imageUrl": f"/img/placeholder/{it['itemId']}.svg",
             "productLink": f"https://shopee.example/product/{it['shopId']}/{it['itemId']}",
             "offerLink": f"https://s.shopee.example/{it['itemId']}",
             "periodStartTime": 0,

@@ -23,13 +23,14 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from psycopg import sql
 
 from .config import get_settings
 from .db import connect, migrate
 from .ingest import purge_mock, run_ingest, seed_mock_if_empty
+from .placeholder import render as render_placeholder
 from .home import build_suggestions
 from .scheduler import build_scheduler
 from .signals import SIGNALS
@@ -183,6 +184,22 @@ def health():
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     return TEMPLATES.TemplateResponse(request, "index.html", {"signals": SIGNALS})
+
+
+@app.get("/img/placeholder/{item_id}.svg")
+def placeholder_image(item_id: int):
+    """Generated mock-up product image (used for synthetic rows and as an <img> fallback)."""
+    title = ""
+    try:
+        with connect() as conn:
+            rec = conn.execute(
+                "SELECT title FROM product_snapshots WHERE item_id = %s ORDER BY snapshot_date DESC LIMIT 1", (item_id,)
+            ).fetchone()
+            title = rec["title"] if rec else ""
+    except Exception:  # noqa: BLE001 - image must never 500 because of the DB
+        title = ""
+    return Response(render_placeholder(item_id, title), media_type="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/api/meta")

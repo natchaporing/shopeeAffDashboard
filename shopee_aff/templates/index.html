@@ -143,6 +143,7 @@
     .field { @apply flex min-w-0 flex-col gap-1.5; }
     .field > span { @apply text-xs font-medium text-muted-foreground; }
     .card { @apply rounded-lg border bg-card text-card-foreground shadow-sm; }
+    .thumb { @apply shrink-0 rounded-md border bg-muted object-cover; }
     .card-head { @apply flex flex-wrap items-start justify-between gap-3 p-4 pb-2; }
     .card-title { @apply text-sm font-semibold leading-none tracking-tight; }
     .card-desc { @apply mt-1 text-xs text-muted-foreground; }
@@ -197,7 +198,8 @@
     .list .v small { @apply block text-[11px] font-normal text-muted-foreground; }
     .pick { @apply flex cursor-pointer flex-col gap-2.5 rounded-lg border bg-card p-3.5 transition-colors hover:border-primary/60 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background text-left; }
     .pick .head { @apply flex items-start justify-between gap-2; }
-    .pick .head b { @apply min-w-0 truncate font-semibold leading-5; }
+    .pick .head b { @apply min-w-0 flex-1 truncate font-semibold leading-5; }
+    .pick .head { @apply items-center; }
     .pick ul { @apply flex flex-col gap-1 text-xs text-muted-foreground; }
     .pick ul li { @apply flex items-start gap-1.5; }
     .pick ul svg { @apply mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400; }
@@ -386,6 +388,8 @@
 
 <script>
 const SIGNALS = {{ signals|tojson }};
+const imgSrc = it => (it.image_url && !/\.example\//.test(it.image_url)) ? it.image_url : `/img/placeholder/${it.item_id}.svg`;
+const thumb = (it, cls) => `<img class="thumb ${cls}" src="${esc(imgSrc(it))}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/img/placeholder/${it.item_id}.svg'">`;
 const COLS = [
   ["rank","Rank",false], ["title","Product",true], ["category","Category",true], ["price","Price",false],
   ["commission_rate","Comm %",false], ["monthly_sales","Sales/mo",false], ["est_monthly_revenue","Est. rev.",false],
@@ -554,9 +558,11 @@ async function load() {
   $("body").innerHTML = data.items.map(it => `
     <tr data-id="${it.item_id}" tabindex="0" aria-expanded="false">
       <td class="text-muted-foreground">${fmt(it.rank)}</td>
-      <td class="l max-w-[270px]">
+      <td class="l max-w-[300px]">
+        <div class="flex items-center gap-2.5">${thumb(it, "h-9 w-9")}<div class="min-w-0">
         <div class="truncate font-medium" title="${esc(it.title)}">${it.product_link?`<a class="hover:underline" href="${esc(it.product_link)}" target="_blank" rel="noopener">${esc(it.title)}</a>`:esc(it.title)}</div>
         <div class="truncate text-[11px] text-muted-foreground">${esc(it.shop_name||"")}</div>
+        </div></div>
       </td>
       <td class="l text-muted-foreground">${esc(it.category||"")}</td>
       <td>${fmt(it.price,2)}</td>
@@ -634,6 +640,7 @@ function detailHtml(d) {
   const link = (href, label) => href ? `<a class="btn btn-outline btn-sm" href="${esc(href)}" target="_blank" rel="noopener">${label}${ic("ext","h-3.5 w-3.5")}</a>` : "";
   return `<div class="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
     <div class="flex min-w-0 flex-col gap-3">
+      <div class="overflow-hidden rounded-lg border bg-muted"><img class="aspect-square w-full object-cover" src="${esc(imgSrc(it))}" alt="${esc(it.title)}" onerror="this.onerror=null;this.src='/img/placeholder/${it.item_id}.svg'"></div>
       <div class="rounded-lg border bg-card p-3">${sparkline(d.history)}</div>
       <dl class="dl rounded-lg border bg-card p-3">
         <dt>Item ID</dt><dd>${esc(it.item_id)}</dd>
@@ -718,6 +725,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") { closeModal
 function listPanel(title, sub, items, valueFn, sortKey, icon) {
   const rows = items.map((it, i) => `<li data-id="${it.item_id}" tabindex="0" role="button">
       <span class="n">${i+1}</span>
+      ${thumb(it, "h-8 w-8")}
       <span class="t"><b title="${esc(it.title)}">${esc(it.title)}</b><small><span class="truncate">${esc(it.category||"")} · #${fmt(it.rank)}</span>${badge(it.signal, "px-1.5 py-0 text-[10px]")}</small></span>
       <span class="v">${valueFn(it)}</span></li>`).join("") || `<li class="cursor-default justify-center py-8 text-xs text-muted-foreground hover:bg-transparent">No data for this day</li>`;
   return `<div class="card flex min-w-0 flex-col">
@@ -738,7 +746,7 @@ async function loadHome() {
   }
   const h = await r.json();
   const picks = h.suggestions.map(it => `<div class="pick" data-id="${it.item_id}" tabindex="0" role="button">
-      <div class="head"><b title="${esc(it.title)}">${esc(it.title)}</b>${badge(it.signal)}</div>
+      <div class="head">${thumb(it, "h-11 w-11")}<b title="${esc(it.title)}">${esc(it.title)}</b>${badge(it.signal)}</div>
       <ul>${it.reasons.map(x=>`<li>${ic("check")}<span>${esc(x)}</span></li>`).join("")}</ul>
       <div class="kpis">
         <div><div class="lbl">Rank</div><div class="val">#${fmt(it.rank)}</div></div>
