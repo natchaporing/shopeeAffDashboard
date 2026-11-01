@@ -93,8 +93,15 @@ export const ImageUploader: React.FC<Props> = ({images, onChange, max, recommend
 						e.target.value = '';
 					}}
 				/>
-				<strong>{room > 0 ? 'Drop product photos here or click to choose' : `Maximum ${max} images reached`}</strong>
-				<span>JPG, PNG or WebP · up to {max} · first image is the cover</span>
+				{room > 0 ? (
+					<>
+						<strong className="only-fine">Drop product photos here or click to choose</strong>
+						<strong className="only-coarse">＋ Add photos</strong>
+					</>
+				) : (
+					<strong>Maximum {max} photos reached</strong>
+				)}
+				<span>JPG, PNG or WebP · up to {max} · first photo is the cover</span>
 			</div>
 
 			{images.length > 0 || busy > 0 ? (

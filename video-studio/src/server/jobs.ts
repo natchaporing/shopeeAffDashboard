@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import type {ProductVideoProps} from '../remotion/schema';
 import {buildCaption} from '../shared/caption';
-import {renderVideo} from './render';
 
 export type JobStatus = 'queued' | 'rendering' | 'done' | 'failed';
 
@@ -19,23 +19,45 @@ export type Job = {
 	error?: string;
 };
 
+export type RenderFn = (opts: {
+	templateId: string;
+	props: ProductVideoProps;
+	outputLocation: string;
+	onProgress: (p: number) => void;
+}) => Promise<void>;
+
+export class QueueFullError extends Error {}
+
 /**
- * Phase 0 job queue: in memory, one render at a time. The MVP replaces this with a
- * `render_jobs` table in Postgres claimed by a separate worker
- * (SELECT ... FOR UPDATE SKIP LOCKED), with the same statuses.
+ * Phase 0 job queue: one render at a time, job metadata written to
+ * `<dataDir>/jobs/<id>.json` so the video list survives restarts and redeploys.
+ * The MVP replaces this with a `render_jobs` table claimed by a separate worker.
  */
 export class JobQueue {
 	private jobs = new Map<string, Job>();
 	private queue: string[] = [];
 	private running = false;
+	private jobsDir: string;
 
 	constructor(
-		private outputDir: string,
-		/** turns `/uploads/a.jpg` into a URL the headless browser can load */
-		private toAbsolute: (src: string) => string,
-	) {}
+		private opts: {
+			dataDir: string;
+			outputDir: string;
+			render: RenderFn;
+			/** turns `/uploads/a.jpg` into a URL the headless browser can load */
+			toAbsolute: (src: string) => string;
+			maxQueued: number;
+		},
+	) {
+		this.jobsDir = path.join(opts.dataDir, 'jobs');
+		fs.mkdirSync(this.jobsDir, {recursive: true});
+		this.load();
+	}
 
 	enqueue(templateId: string, props: ProductVideoProps): Job {
+		if (this.queue.length >= this.opts.maxQueued) {
+			throw new QueueFullError('Too many videos waiting. Try again in a minute.');
+		}
 		const job: Job = {
 			id: crypto.randomUUID(),
 			templateId,
@@ -47,6 +69,7 @@ export class JobQueue {
 		};
 		this.jobs.set(job.id, job);
 		this.queue.push(job.id);
+		this.save(job);
 		void this.next();
 		return job;
 	}
@@ -63,6 +86,42 @@ export class JobQueue {
 		return this.queue.indexOf(id);
 	}
 
+	/** Forget jobs whose video file was cleaned up. */
+	prune(maxAgeMs: number): void {
+		const cutoff = Date.now() - maxAgeMs;
+		for (const job of this.jobs.values()) {
+			if (job.status !== 'queued' && job.status !== 'rendering' && Date.parse(job.createdAt) < cutoff) {
+				this.jobs.delete(job.id);
+				fs.rmSync(path.join(this.jobsDir, `${job.id}.json`), {force: true});
+			}
+		}
+	}
+
+	private load(): void {
+		for (const file of fs.readdirSync(this.jobsDir)) {
+			if (!file.endsWith('.json')) continue;
+			try {
+				const job = JSON.parse(fs.readFileSync(path.join(this.jobsDir, file), 'utf8')) as Job;
+				if (job.status === 'queued' || job.status === 'rendering') {
+					job.status = 'failed';
+					job.error = 'Interrupted by a server restart. Please generate again.';
+					this.save(job);
+				}
+				this.jobs.set(job.id, job);
+			} catch (err) {
+				console.warn(`skipping unreadable job file ${file}`, err);
+			}
+		}
+	}
+
+	private save(job: Job): void {
+		try {
+			fs.writeFileSync(path.join(this.jobsDir, `${job.id}.json`), JSON.stringify(job));
+		} catch (err) {
+			console.error(`could not save job ${job.id}`, err);
+		}
+	}
+
 	private async next(): Promise<void> {
 		if (this.running) return;
 		const id = this.queue.shift();
@@ -70,17 +129,18 @@ export class JobQueue {
 		const job = this.jobs.get(id)!;
 		this.running = true;
 		job.status = 'rendering';
+		this.save(job);
 		try {
 			const props: ProductVideoProps = {
 				...job.props,
-				images: job.props.images.map((img) => ({...img, src: this.toAbsolute(img.src)})),
-				music: job.props.music ? this.toAbsolute(job.props.music) : undefined,
+				images: job.props.images.map((img) => ({...img, src: this.opts.toAbsolute(img.src)})),
+				music: job.props.music ? this.opts.toAbsolute(job.props.music) : undefined,
 			};
 			const file = `${job.id}.mp4`;
-			await renderVideo({
+			await this.opts.render({
 				templateId: job.templateId,
 				props,
-				outputLocation: path.join(this.outputDir, file),
+				outputLocation: path.join(this.opts.outputDir, file),
 				onProgress: (p) => {
 					job.progress = p;
 				},
@@ -94,6 +154,7 @@ export class JobQueue {
 			console.error(`[job ${job.id}] render failed`, err);
 		} finally {
 			job.finishedAt = new Date().toISOString();
+			this.save(job);
 			this.running = false;
 			void this.next();
 		}

@@ -20,6 +20,7 @@ import {planSlideshow, type Shot} from './slideshow-plan';
 loadFonts();
 
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
+const ENTRANCE_HEAD_START = 6;
 
 /**
  * Multi-angle Slideshow (9:16). Cover image + hook, 3+ gallery shots with Ken Burns
@@ -88,8 +89,10 @@ const MainLayout: React.FC<LayoutProps> = ({theme, shots, ...p}) => {
 	const frame = useCurrentFrame();
 	const {fps} = useVideoConfig();
 
-	const cardIn = spring({frame, fps, config: {damping: 14, stiffness: 120}});
-	const infoIn = spring({frame: frame - 8, fps, config: {damping: 16}});
+	// Entrances start part-way through their springs so frame 0 already shows the
+	// product, price and hook: apps often use the first frame as the cover image.
+	const cardIn = spring({frame: frame + ENTRANCE_HEAD_START, fps, config: {damping: 14, stiffness: 120}});
+	const infoIn = spring({frame: frame + ENTRANCE_HEAD_START - 4, fps, config: {damping: 16}});
 	const pct = discountPercent(p.price, p.originalPrice);
 
 	return (
@@ -110,7 +113,7 @@ const MainLayout: React.FC<LayoutProps> = ({theme, shots, ...p}) => {
 					backgroundColor: '#FFFFFF',
 					boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
 					transform: `scale(${interpolate(cardIn, [0, 1], [0.86, 1])})`,
-					opacity: cardIn,
+					opacity: Math.min(1, cardIn * 1.4),
 				}}
 			>
 				{shots.map((shot, i) => (
@@ -216,7 +219,7 @@ export function hookFontSize(text: string): number {
 const HookText: React.FC<{text: string; theme: Theme}> = ({text, theme}) => {
 	const frame = useCurrentFrame();
 	const {fps} = useVideoConfig();
-	const pop = spring({frame: frame - 3, fps, config: {damping: 9, stiffness: 160}});
+	const pop = spring({frame: frame + ENTRANCE_HEAD_START, fps, config: {damping: 9, stiffness: 160}});
 	const wiggle = Math.sin(frame / 5) * interpolate(frame, [0, 30], [2.5, 0], clamp);
 
 	return (
@@ -296,30 +299,28 @@ const PriceRow: React.FC<ProductVideoProps & {theme: Theme}> = ({price, original
 		);
 	}
 
-	// "price drop" counter: rolls from the original price down to the deal price.
-	const start = pct && originalPrice ? originalPrice : price;
-	const shown = interpolate(frame, [22, 50], [start, price], {...clamp, easing: Easing.out(Easing.cubic)});
-	const settled = frame >= 50 || start === price;
-	const strikeWidth = interpolate(frame, [48, 58], [0, 100], clamp);
+	// Static on purpose: frame 0 is often used as the cover, so it must show the real
+	// deal price. The "price drop" counter plays on the end card instead.
+	// one short pulse on the price when the discount sticker lands
+	const pulse = frame >= 18 && frame <= 30 ? 1 + Math.sin(((frame - 18) / 12) * Math.PI) * 0.06 : 1;
 
 	return (
 		<div style={{display: 'flex', alignItems: 'baseline', gap: 24, marginTop: 6, flexWrap: 'wrap'}}>
-			<div style={{fontSize: 104, fontWeight: 800, color: theme.primary, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums'}}>
-				{formatBaht(settled ? price : Math.round(shown))}
+			<div
+				style={{
+					fontSize: 104,
+					fontWeight: 800,
+					color: theme.primary,
+					lineHeight: 1.1,
+					transform: `scale(${pulse})`,
+					transformOrigin: 'left center',
+				}}
+			>
+				{formatBaht(price)}
 			</div>
 			{pct && originalPrice ? (
-				<div style={{position: 'relative', fontSize: 44, fontWeight: 400, color: MUTED}}>
+				<div style={{fontSize: 44, fontWeight: 400, color: MUTED, textDecoration: 'line-through', textDecorationThickness: 4}}>
 					{formatBaht(originalPrice)}
-					<div
-						style={{
-							position: 'absolute',
-							left: 0,
-							top: '54%',
-							height: 4,
-							width: `${strikeWidth}%`,
-							backgroundColor: MUTED,
-						}}
-					/>
 				</div>
 			) : null}
 		</div>
@@ -366,6 +367,12 @@ const EndCard: React.FC<ProductVideoProps & {theme: Theme}> = ({theme, ...p}) =>
 	const pulse = 1 + Math.max(0, Math.sin((frame - 20) / 4.5)) * 0.045;
 	const bounce = Math.abs(Math.sin(frame / 6)) * 22;
 
+	// "price drop" counter: rolls from the original price down to the deal price.
+	const dropFrom = pct && p.originalPrice ? p.originalPrice : p.price;
+	const dropShown = interpolate(frame, [6, 30], [dropFrom, p.price], {...clamp, easing: Easing.out(Easing.cubic)});
+	const dropSettled = frame >= 30 || dropFrom === p.price;
+	const badgeIn = spring({frame: frame - 30, fps, config: {damping: 8, stiffness: 160}});
+
 	return (
 		<AbsoluteFill>
 			<Backdrop image={cover} />
@@ -405,18 +412,28 @@ const EndCard: React.FC<ProductVideoProps & {theme: Theme}> = ({theme, ...p}) =>
 					</div>
 				) : (
 					<>
-						<div style={{fontSize: 150, fontWeight: 800, lineHeight: 1.05, textShadow: '0 8px 30px rgba(0,0,0,0.5)'}}>
-							{formatBaht(p.price)}
+						<div
+							style={{
+								fontSize: 150,
+								fontWeight: 800,
+								lineHeight: 1.05,
+								textShadow: '0 8px 30px rgba(0,0,0,0.5)',
+								fontVariantNumeric: 'tabular-nums',
+							}}
+						>
+							{formatBaht(dropSettled ? p.price : Math.round(dropShown))}
 						</div>
 						{pct && p.originalPrice ? (
 							<div style={{fontSize: 46, fontWeight: 600, marginTop: 4}}>
 								<span style={{textDecoration: 'line-through', opacity: 0.75}}>{formatBaht(p.originalPrice)}</span>
 								<span
 									style={{
+										display: 'inline-block',
 										marginLeft: 18,
 										padding: '2px 18px',
 										borderRadius: 14,
 										backgroundColor: SALE_RED,
+										transform: `scale(${badgeIn})`,
 									}}
 								>
 									-{pct}%

@@ -3,6 +3,7 @@
  *
  *   npm run render:sample                      -> out/sample.mp4
  *   npm run render:sample -- --stills          -> out/stills/*.png (key frames only, fast)
+ *   npm run render:sample -- --frames=0,4         -> out/stills/frame-0000.png, frame-0004.png
  *   npm run render:sample -- --images=1 --lazada --hide-price
  */
 import fs from 'node:fs';
@@ -16,6 +17,7 @@ import {ROOT, renderFrame, renderVideo} from '../src/server/render';
 const args = new Set(process.argv.slice(2));
 const imagesArg = process.argv.find((a) => a.startsWith('--images='));
 const imageCount = imagesArg ? Number(imagesArg.split('=')[1]) : 4;
+const framesArg = process.argv.find((a) => a.startsWith('--frames='));
 
 const app = express();
 app.use(express.static(path.join(ROOT, 'public')));
@@ -41,14 +43,13 @@ const outDir = path.join(ROOT, 'out');
 fs.mkdirSync(outDir, {recursive: true});
 
 try {
-	if (args.has('--stills')) {
+	if (args.has('--stills') || framesArg) {
 		const plan = planSlideshow(props.images);
 		const stillsDir = path.join(outDir, 'stills');
 		fs.mkdirSync(stillsDir, {recursive: true});
-		const frames = [
-			...plan.shots.map((s) => s.from + Math.min(s.duration - 1, 40)),
-			plan.endFrom + 60,
-		];
+		const frames = framesArg
+			? framesArg.split('=')[1].split(',').map(Number)
+			: [...plan.shots.map((s) => s.from + Math.min(s.duration - 1, 40)), plan.endFrom + 60];
 		for (const frame of frames) {
 			const output = path.join(stillsDir, `frame-${String(frame).padStart(4, '0')}.png`);
 			await renderFrame({templateId, props, frame, output});

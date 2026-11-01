@@ -4,8 +4,9 @@ import path from 'node:path';
 import express from 'express';
 import multer from 'multer';
 import {TEMPLATES} from '../remotion/templates/registry';
-import {JobQueue} from './jobs';
-import {ROOT, getServeUrl} from './render';
+import {deleteOldFiles, rateLimit} from './guards';
+import {JobQueue, QueueFullError} from './jobs';
+import {ROOT, getServeUrl, renderVideo} from './render';
 import {validateJobRequest} from './validate';
 
 const PORT = Number(process.env.PORT || 3000);
@@ -16,6 +17,11 @@ const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const OUTPUT_DIR = path.join(DATA_DIR, 'outputs');
 fs.mkdirSync(UPLOAD_DIR, {recursive: true});
 fs.mkdirSync(OUTPUT_DIR, {recursive: true});
+
+// No login yet, so keep the open server from being abused or filling the disk.
+const RETENTION_DAYS = Number(process.env.RETENTION_DAYS || 7);
+const RETENTION_MS = RETENTION_DAYS * 24 * 60 * 60 * 1000;
+const MAX_QUEUED = Number(process.env.MAX_QUEUED || 5);
 
 // Upload rules. Images are resized in the browser before upload, so 15 MB is generous.
 const ALLOWED: Record<string, {ext: string; kind: 'image' | 'audio'}> = {
@@ -41,11 +47,26 @@ const upload = multer({
 	},
 });
 
-const queue = new JobQueue(OUTPUT_DIR, (src) => `http://127.0.0.1:${PORT}${src}`);
+const queue = new JobQueue({
+	dataDir: DATA_DIR,
+	outputDir: OUTPUT_DIR,
+	render: renderVideo,
+	toAbsolute: (src) => `http://127.0.0.1:${PORT}${src}`,
+	maxQueued: MAX_QUEUED,
+});
 
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', 1); // Railway / any single reverse proxy: req.ip = real client
 app.use(express.json({limit: '200kb'}));
+app.use((_req, res, next) => {
+	res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+	next();
+});
+
+app.get('/robots.txt', (_req, res) => {
+	res.type('text/plain').send('User-agent: *\nDisallow: /\n');
+});
 
 app.use('/uploads', express.static(UPLOAD_DIR, {immutable: true, maxAge: '7d'}));
 app.use('/outputs', express.static(OUTPUT_DIR));
@@ -55,12 +76,13 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.get('/api/templates', (_req, res) => {
-	res.json(
-		TEMPLATES.map(({component: _c, durationInFrames: _d, ...manifest}) => manifest),
-	);
+	res.json(TEMPLATES.map(({component: _c, durationInFrames: _d, ...manifest}) => manifest));
 });
 
-app.post('/api/uploads', (req, res) => {
+const uploadLimit = rateLimit({windowMs: 15 * 60_000, max: 150, message: 'Too many uploads. Wait a few minutes and try again.'});
+const jobLimit = rateLimit({windowMs: 15 * 60_000, max: 20, message: 'Too many videos in a short time. Wait a few minutes and try again.'});
+
+app.post('/api/uploads', uploadLimit, (req, res) => {
 	upload.single('file')(req, res, (err: unknown) => {
 		if (err) {
 			res.status(400).json({error: err instanceof Error ? err.message : String(err)});
@@ -78,18 +100,23 @@ app.post('/api/uploads', (req, res) => {
 	});
 });
 
-app.post('/api/jobs', (req, res) => {
+app.post('/api/jobs', jobLimit, (req, res) => {
 	const result = validateJobRequest(req.body);
 	if (!result.ok) {
 		res.status(400).json({errors: result.errors});
 		return;
 	}
-	const job = queue.enqueue(result.value.templateId, result.value.props);
-	res.status(202).json(publicJob(job.id));
+	try {
+		const job = queue.enqueue(result.value.templateId, result.value.props);
+		res.status(202).json(publicJob(job.id));
+	} catch (err) {
+		if (err instanceof QueueFullError) res.status(429).json({error: err.message});
+		else throw err;
+	}
 });
 
 app.get('/api/jobs', (_req, res) => {
-	res.json(queue.list().slice(0, 50).map((j) => publicJob(j.id)));
+	res.json(queue.list().slice(0, 30).map((j) => publicJob(j.id)));
 });
 
 app.get('/api/jobs/:id', (req, res) => {
@@ -130,8 +157,16 @@ if (isProd) {
 	app.use(vite.middlewares);
 }
 
+function sweep() {
+	const removed = deleteOldFiles([UPLOAD_DIR, OUTPUT_DIR], RETENTION_MS);
+	queue.prune(RETENTION_MS);
+	if (removed) console.log(`cleanup: removed ${removed} file(s) older than ${RETENTION_DAYS} days`);
+}
+sweep();
+setInterval(sweep, 60 * 60_000).unref();
+
 app.listen(PORT, () => {
-	console.log(`video-studio listening on http://localhost:${PORT} (${isProd ? 'production' : 'dev'})`);
+	console.log(`video-studio listening on http://localhost:${PORT} (${isProd ? 'production' : 'dev'}), data in ${DATA_DIR}`);
 	// Warm the Remotion bundle so the first render doesn't wait for it.
 	getServeUrl()
 		.then(() => console.log('remotion bundle ready'))
