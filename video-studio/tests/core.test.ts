@@ -6,6 +6,7 @@ import {TIMING, planSlideshow} from '../src/remotion/templates/slideshow-plan';
 import {buildCaption} from '../src/shared/caption';
 import {detectPlatform, isAllowedAssetPath} from '../src/shared/links';
 import {validateJobRequest} from '../src/server/validate';
+import {BUILT_IN_TEMPLATES} from '../src/shared/templates';
 
 const img = (n: number) => ({src: `/uploads/img-${n}.jpg`});
 
@@ -122,30 +123,57 @@ describe('caption', () => {
 	});
 });
 
+const deps = {
+	getTemplate: (id: string) => BUILT_IN_TEMPLATES.find((t) => t.id === id),
+	clipInfo: (src: string) => (src === '/uploads/clip.mp4' ? {durationInSeconds: 6.5, width: 1080, height: 1920} : undefined),
+};
+
 describe('job validation', () => {
 	it('accepts a valid request and applies defaults', () => {
-		const res = validateJobRequest({templateId: 'multi-angle-slideshow', props: baseProps});
+		const res = validateJobRequest({templateId: 'multi-angle-slideshow', props: baseProps}, deps);
 		assert.ok(res.ok);
 		if (res.ok) {
 			assert.equal(res.value.props.cta, 'กดตะกร้าเลย');
 			assert.equal(res.value.props.hidePrice, false);
+			assert.equal(res.value.compositionId, 'slideshow');
+		}
+	});
+	it('uses the template style, not one sent by the client', () => {
+		const res = validateJobRequest({templateId: 'flash-sale', props: {...baseProps, style: {ribbon: 'HACKED', pace: 'slow'}}}, deps);
+		assert.ok(res.ok);
+		if (res.ok) {
+			assert.equal(res.value.props.style.ribbon, 'FLASH SALE');
+			assert.equal(res.value.props.style.pace, 'fast');
 		}
 	});
 	it('rejects unknown templates, remote images and missing fields', () => {
-		const bad = validateJobRequest({templateId: 'nope', props: {...baseProps, images: [{src: 'http://evil/x.jpg'}]}});
-		assert.ok(!bad.ok);
-		if (!bad.ok) {
-			assert.ok(bad.errors.some((e) => e.includes('Unknown template')));
-			assert.ok(bad.errors.some((e) => e.includes('uploaded file')));
-		}
-		const missing = validateJobRequest({templateId: 'multi-angle-slideshow', props: {...baseProps, images: [], price: 0}});
+		const unknown = validateJobRequest({templateId: 'nope', props: baseProps}, deps);
+		assert.ok(!unknown.ok && unknown.errors.some((e) => e.includes('Unknown template')));
+		const remote = validateJobRequest({templateId: 'multi-angle-slideshow', props: {...baseProps, images: [{src: 'http://evil/x.jpg'}]}}, deps);
+		assert.ok(!remote.ok && remote.errors.some((e) => e.includes('uploaded file')));
+		const missing = validateJobRequest({templateId: 'multi-angle-slideshow', props: {...baseProps, images: [], price: 0}}, deps);
 		assert.ok(!missing.ok);
 	});
-	it('enforces the template image limit', () => {
-		const res = validateJobRequest({
-			templateId: 'multi-angle-slideshow',
-			props: {...baseProps, images: Array.from({length: 11}, (_, i) => img(i))},
-		});
+	it('enforces the engine image limit', () => {
+		const res = validateJobRequest({templateId: 'multi-angle-slideshow', props: {...baseProps, images: Array.from({length: 11}, (_, i) => img(i))}}, deps);
 		assert.ok(!res.ok);
+	});
+	it('clip templates need an uploaded clip and use the measured duration', () => {
+		const none = validateJobRequest({templateId: 'ai-hero-shot', props: baseProps}, deps);
+		assert.ok(!none.ok && none.errors.some((e) => e.includes('AI clip')));
+		const remote = validateJobRequest({templateId: 'own-clip', props: {...baseProps, clip: {src: 'http://evil/c.mp4', durationInSeconds: 3}}}, deps);
+		assert.ok(!remote.ok);
+		const unknownFile = validateJobRequest({templateId: 'own-clip', props: {...baseProps, clip: {src: '/uploads/gone.mp4', durationInSeconds: 3}}}, deps);
+		assert.ok(!unknownFile.ok && unknownFile.errors.some((e) => e.includes('not found')));
+		const ok = validateJobRequest({templateId: 'own-clip', props: {...baseProps, clip: {src: '/uploads/clip.mp4', durationInSeconds: 30}}}, deps);
+		assert.ok(ok.ok);
+		if (ok.ok) {
+			assert.equal(ok.value.props.clip?.durationInSeconds, 6.5, 'server measurement wins');
+			assert.equal(ok.value.compositionId, 'clip');
+		}
+	});
+	it('drops a clip sent to a slideshow template', () => {
+		const res = validateJobRequest({templateId: 'gadget-dark', props: {...baseProps, clip: {src: '/uploads/clip.mp4', durationInSeconds: 3}}}, deps);
+		assert.ok(res.ok && res.value.props.clip === undefined);
 	});
 });

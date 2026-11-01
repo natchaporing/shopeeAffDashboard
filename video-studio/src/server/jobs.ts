@@ -9,6 +9,8 @@ export type JobStatus = 'queued' | 'rendering' | 'done' | 'failed';
 export type Job = {
 	id: string;
 	templateId: string;
+	/** Remotion composition = engine id; older job files without it were slideshows */
+	compositionId?: string;
 	props: ProductVideoProps;
 	status: JobStatus;
 	progress: number;
@@ -20,7 +22,7 @@ export type Job = {
 };
 
 export type RenderFn = (opts: {
-	templateId: string;
+	compositionId: string;
 	props: ProductVideoProps;
 	outputLocation: string;
 	onProgress: (p: number) => void;
@@ -54,13 +56,14 @@ export class JobQueue {
 		this.load();
 	}
 
-	enqueue(templateId: string, props: ProductVideoProps): Job {
+	enqueue(templateId: string, compositionId: string, props: ProductVideoProps): Job {
 		if (this.queue.length >= this.opts.maxQueued) {
 			throw new QueueFullError('Too many videos waiting. Try again in a minute.');
 		}
 		const job: Job = {
 			id: crypto.randomUUID(),
 			templateId,
+			compositionId,
 			props,
 			status: 'queued',
 			progress: 0,
@@ -135,10 +138,11 @@ export class JobQueue {
 				...job.props,
 				images: job.props.images.map((img) => ({...img, src: this.opts.toAbsolute(img.src)})),
 				music: job.props.music ? this.opts.toAbsolute(job.props.music) : undefined,
+				clip: job.props.clip ? {...job.props.clip, src: this.opts.toAbsolute(job.props.clip.src)} : undefined,
 			};
 			const file = `${job.id}.mp4`;
 			await this.opts.render({
-				templateId: job.templateId,
+				compositionId: job.compositionId ?? 'slideshow',
 				props,
 				outputLocation: path.join(this.opts.outputDir, file),
 				onProgress: (p) => {

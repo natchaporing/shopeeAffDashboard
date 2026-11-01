@@ -1,17 +1,21 @@
 import {Player} from '@remotion/player';
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import type {z} from 'zod';
+import {ENGINES} from '../remotion/engines';
 import {productVideoSchema, type ProductVideoProps} from '../remotion/schema';
-import {TEMPLATES, getTemplate, type TemplateManifest} from '../remotion/templates/registry';
 import {buildCaption} from '../shared/caption';
-import {createJob, getJob, listJobs, type JobView} from './api';
+import {BUILT_IN_TEMPLATES, type VideoTemplate} from '../shared/templates';
+import {createJob, getJob, listJobs, listTemplates, type JobView} from './api';
 import {EMPTY_FORM, SAMPLE_FORM, reviveForm, toInput, type Form} from './form';
 import {readStored, useMediaQuery, writeStored} from './hooks';
 import {JobResult} from './JobResult';
 import {ProductForm} from './ProductForm';
+import {TemplatesPage} from './TemplatesPage';
 
 const DRAFT_KEY = 'vs:draft:v1';
 const JOB_KEY = 'vs:job:v1';
+
+type Page = 'create' | 'templates';
 
 const FIELD_LABELS: Record<string, string> = {
 	title: 'Product name',
@@ -36,8 +40,14 @@ function friendlyIssues(error: z.ZodError): string[] {
 	});
 }
 
+function pageFromHash(): Page {
+	return typeof window !== 'undefined' && window.location.hash === '#templates' ? 'templates' : 'create';
+}
+
 export const App: React.FC = () => {
 	const isPhone = useMediaQuery('(max-width: 699px)');
+	const [page, setPage] = useState<Page>(pageFromHash);
+	const [templates, setTemplates] = useState<VideoTemplate[]>(BUILT_IN_TEMPLATES);
 	const [form, setForm] = useState<Form>(() => reviveForm(readStored(DRAFT_KEY)));
 	const [job, setJob] = useState<JobView | null>(null);
 	// Read before the first effects run: the effect that stores job?.id clears it on mount.
@@ -46,11 +56,22 @@ export const App: React.FC = () => {
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [view, setView] = useState<'edit' | 'preview'>('edit');
 
-	const template = getTemplate(form.templateId) ?? TEMPLATES[0];
-	const parsed = useMemo(() => productVideoSchema.safeParse(toInput(form)), [form]);
+	const template = templates.find((t) => t.id === form.templateId) ?? templates[0];
+	const engine = ENGINES[template.engine];
+	const parsed = useMemo(() => productVideoSchema.safeParse(toInput(form, template)), [form, template]);
 	const props: ProductVideoProps | null = parsed.success ? parsed.data : null;
 	const problems = parsed.success ? [] : friendlyIssues(parsed.error);
+	if (props && engine.usesClip && !props.clip) problems.push(template.masterPrompt ? 'Upload the AI clip' : 'Upload your clip');
+	const canGenerate = Boolean(props) && problems.length === 0;
 	const rendering = job?.status === 'queued' || job?.status === 'rendering';
+
+	const refreshTemplates = useCallback(async () => {
+		try {
+			setTemplates(await listTemplates());
+		} catch {
+			// offline / server down: keep the built-ins
+		}
+	}, []);
 
 	// Keep the draft and the active job across reloads / app switches.
 	useEffect(() => writeStored(DRAFT_KEY, form), [form]);
@@ -58,8 +79,12 @@ export const App: React.FC = () => {
 
 	useEffect(() => {
 		refreshHistory();
+		void refreshTemplates();
 		if (savedJobId) getJob(savedJobId).then(setJob).catch(() => undefined);
-	}, []);
+		const onHash = () => setPage(pageFromHash());
+		window.addEventListener('hashchange', onHash);
+		return () => window.removeEventListener('hashchange', onHash);
+	}, [savedJobId, refreshTemplates]);
 
 	// Poll the active job until it finishes.
 	useEffect(() => {
@@ -80,13 +105,19 @@ export const App: React.FC = () => {
 		listJobs().then(setHistory).catch(() => undefined);
 	}
 
+	function goPage(next: Page) {
+		window.location.hash = next === 'templates' ? 'templates' : '';
+		setPage(next);
+		window.scrollTo({top: 0});
+	}
+
 	function go(next: 'edit' | 'preview') {
 		setView(next);
 		window.scrollTo({top: 0});
 	}
 
 	async function submit() {
-		if (!props) return;
+		if (!props || !canGenerate) return;
 		setSubmitError(null);
 		try {
 			setJob(await createJob(template.id, props));
@@ -97,8 +128,8 @@ export const App: React.FC = () => {
 	}
 
 	function startNew() {
-		if (form !== EMPTY_FORM && !window.confirm('Start a new video? The current form will be cleared.')) return;
-		setForm(EMPTY_FORM);
+		if (!window.confirm('Start a new video? The current form will be cleared.')) return;
+		setForm({...EMPTY_FORM, templateId: form.templateId});
 		setJob(null);
 		setSubmitError(null);
 		go('edit');
@@ -107,23 +138,50 @@ export const App: React.FC = () => {
 	const header = (
 		<header>
 			<h1>Video Studio</h1>
-			<span className="tag">Phase 0</span>
-			<div className="header-actions">
-				<button type="button" className="small" onClick={() => setForm(SAMPLE_FORM)}>
-					Sample
+			<nav className="page-nav" aria-label="Pages">
+				<button type="button" aria-current={page === 'create' ? 'page' : undefined} onClick={() => goPage('create')}>
+					Create
 				</button>
-				<button type="button" className="small" onClick={startNew}>
-					New
+				<button type="button" aria-current={page === 'templates' ? 'page' : undefined} onClick={() => goPage('templates')}>
+					Templates
 				</button>
-			</div>
+			</nav>
+			{page === 'create' ? (
+				<div className="header-actions">
+					<button type="button" className="small" onClick={() => setForm({...SAMPLE_FORM, templateId: form.templateId})}>
+						Sample
+					</button>
+					<button type="button" className="small" onClick={startNew}>
+						New
+					</button>
+				</div>
+			) : null}
 		</header>
 	);
+
+	if (page === 'templates') {
+		return (
+			<div className={`app${isPhone ? ' phone no-bar' : ''}`}>
+				{header}
+				<TemplatesPage
+					templates={templates}
+					onChanged={refreshTemplates}
+					onUse={(id) => {
+						setForm((f) => ({...f, templateId: id}));
+						goPage('create');
+						go('edit');
+					}}
+				/>
+			</div>
+		);
+	}
 
 	const preview = (
 		<PreviewPanel
 			template={template}
 			props={props}
 			problems={problems}
+			canGenerate={canGenerate}
 			job={job}
 			history={history}
 			submitError={submitError}
@@ -136,6 +194,7 @@ export const App: React.FC = () => {
 			}}
 		/>
 	);
+	const formPanel = <ProductForm form={form} setForm={setForm} template={template} templates={templates} />;
 
 	if (isPhone) {
 		const issues = problems.length;
@@ -151,25 +210,19 @@ export const App: React.FC = () => {
 					</button>
 				</div>
 				<main>
-					{view === 'edit' ? (
-						<section className="panel form">
-							<ProductForm form={form} setForm={setForm} template={template} />
-						</section>
-					) : (
-						<section className="panel preview">{preview}</section>
-					)}
+					{view === 'edit' ? <section className="panel form">{formPanel}</section> : <section className="panel preview">{preview}</section>}
 				</main>
 				<div className="bottombar">
 					{view === 'edit' ? (
 						<>
 							<span className="summary">
-								{issues ? `${issues} thing${issues > 1 ? 's' : ''} to fill` : `${form.images.length} photo${form.images.length === 1 ? '' : 's'} · ready`}
+								{issues ? `${issues} thing${issues > 1 ? 's' : ''} to fill` : `${template.name} · ready`}
 							</span>
 							<button type="button" className="primary" onClick={() => go('preview')}>
 								Preview →
 							</button>
 						</>
-					) : !props ? (
+					) : !canGenerate ? (
 						<button type="button" className="primary wide" onClick={() => go('edit')}>
 							← Fill {issues} thing{issues > 1 ? 's' : ''} in Edit
 						</button>
@@ -187,9 +240,7 @@ export const App: React.FC = () => {
 		<div className="app">
 			{header}
 			<main className="columns">
-				<section className="panel form">
-					<ProductForm form={form} setForm={setForm} template={template} />
-				</section>
+				<section className="panel form">{formPanel}</section>
 				<section className="panel preview sticky">{preview}</section>
 			</main>
 		</div>
@@ -197,9 +248,10 @@ export const App: React.FC = () => {
 };
 
 type PreviewProps = {
-	template: TemplateManifest;
+	template: VideoTemplate;
 	props: ProductVideoProps | null;
 	problems: string[];
+	canGenerate: boolean;
 	job: JobView | null;
 	history: JobView[];
 	submitError: string | null;
@@ -213,6 +265,7 @@ const PreviewPanel: React.FC<PreviewProps> = ({
 	template,
 	props,
 	problems,
+	canGenerate,
 	job,
 	history,
 	submitError,
@@ -221,7 +274,8 @@ const PreviewPanel: React.FC<PreviewProps> = ({
 	onSubmit,
 	onOpenJob,
 }) => {
-	const durationInFrames = props ? template.durationInFrames(props) : 1;
+	const engine = ENGINES[template.engine];
+	const durationInFrames = props ? engine.durationInFrames(props) : 1;
 	const finished = job && (job.status === 'done' || job.status === 'failed');
 
 	return (
@@ -237,18 +291,18 @@ const PreviewPanel: React.FC<PreviewProps> = ({
 			<div className="player-wrap">
 				{props ? (
 					<Player
-						component={template.component}
+						component={engine.component}
 						inputProps={props}
 						durationInFrames={durationInFrames}
-						compositionWidth={template.width}
-						compositionHeight={template.height}
-						fps={template.fps}
+						compositionWidth={engine.width}
+						compositionHeight={engine.height}
+						fps={engine.fps}
 						controls
 						loop
 						autoPlay={!finished}
 						clickToPlay
 						acknowledgeRemotionLicense
-						style={{width: '100%', aspectRatio: `${template.width} / ${template.height}`}}
+						style={{width: '100%', aspectRatio: `${engine.width} / ${engine.height}`}}
 					/>
 				) : (
 					<div className="placeholder">
@@ -263,12 +317,13 @@ const PreviewPanel: React.FC<PreviewProps> = ({
 			</div>
 			{props ? (
 				<p className="duration">
-					{(durationInFrames / template.fps).toFixed(1)}s · {template.width}×{template.height} · {template.fps}fps
+					{template.name} · {(durationInFrames / engine.fps).toFixed(1)}s · {engine.width}×{engine.height}
 				</p>
 			) : null}
+			{props && problems.length ? <p className="hint warn center">{problems.join(' · ')}</p> : null}
 
 			{showGenerate ? (
-				<button type="button" className="primary" disabled={!props || rendering} onClick={onSubmit}>
+				<button type="button" className="primary" disabled={!canGenerate || rendering} onClick={onSubmit}>
 					{rendering ? 'Rendering…' : 'Generate video'}
 				</button>
 			) : null}

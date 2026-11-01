@@ -1,20 +1,27 @@
 import React, {useState} from 'react';
-import {TEMPLATES, type TemplateManifest} from '../remotion/templates/registry';
+import {ENGINES} from '../remotion/engines';
+import type {VideoTemplate} from '../shared/templates';
 import {detectPlatform} from '../shared/links';
 import {uploadFile} from './api';
+import {ClipSection} from './ClipSection';
 import {HOOKS, type Form} from './form';
 import {ImageUploader} from './ImageUploader';
+import {TemplatePicker} from './TemplatePicker';
 
 type Props = {
 	form: Form;
 	setForm: React.Dispatch<React.SetStateAction<Form>>;
-	template: TemplateManifest;
+	template: VideoTemplate;
+	templates: VideoTemplate[];
 };
 
-export const ProductForm: React.FC<Props> = ({form, setForm, template}) => {
+export const ProductForm: React.FC<Props> = ({form, setForm, template, templates}) => {
 	const [musicError, setMusicError] = useState<string | null>(null);
 	const [musicBusy, setMusicBusy] = useState(false);
 	const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => ({...f, [key]: value}));
+	const engine = ENGINES[template.engine];
+	let section = 0;
+	const next = () => ++section;
 
 	async function onMusic(file: File | undefined) {
 		if (!file) return;
@@ -32,7 +39,7 @@ export const ProductForm: React.FC<Props> = ({form, setForm, template}) => {
 
 	return (
 		<>
-			<h2>1 · Product</h2>
+			<h2>{next()} · Product</h2>
 			<label>
 				Affiliate link
 				<input
@@ -68,13 +75,7 @@ export const ProductForm: React.FC<Props> = ({form, setForm, template}) => {
 
 			<label>
 				Product name
-				<input
-					value={form.title}
-					maxLength={120}
-					enterKeyHint="next"
-					onChange={(e) => set('title', e.target.value)}
-					placeholder="Paste the listing title"
-				/>
+				<input value={form.title} maxLength={120} enterKeyHint="next" onChange={(e) => set('title', e.target.value)} placeholder="Paste the listing title" />
 				<small>Tags like 【พร้อมส่ง】 are removed in the video automatically.</small>
 			</label>
 
@@ -106,15 +107,29 @@ export const ProductForm: React.FC<Props> = ({form, setForm, template}) => {
 				</span>
 			</label>
 
-			<h2>2 · Photos</h2>
+			<h2>{next()} · Photos</h2>
 			<ImageUploader
 				images={form.images}
-				onChange={(next) => setForm((f) => ({...f, images: typeof next === 'function' ? next(f.images) : next}))}
-				max={template.maxImages}
-				recommended={template.recommendedImages}
+				onChange={(nextImages) => setForm((f) => ({...f, images: typeof nextImages === 'function' ? nextImages(f.images) : nextImages}))}
+				max={engine.maxImages}
+				recommended={template.engine === 'slideshow' ? 4 : 1}
 			/>
+			{template.engine === 'clip' ? <p className="hint">Clip templates use the first photo for the end card{template.masterPrompt ? ' and as the AI reference' : ''}.</p> : null}
 
-			<h2>3 · Text & music</h2>
+			<h2>{next()} · Template</h2>
+			<TemplatePicker templates={templates} selectedId={template.id} platform={form.platform} onSelect={(id) => set('templateId', id)} />
+			{template.description ? <p className="hint">{template.description}</p> : null}
+
+			{template.engine === 'clip' ? (
+				<>
+					<h2>
+						{next()} · {template.masterPrompt ? 'AI clip' : 'Your clip'}
+					</h2>
+					<ClipSection form={form} setForm={setForm} template={template} />
+				</>
+			) : null}
+
+			<h2>{next()} · Text & music</h2>
 			<label>
 				Hook (first 2 seconds)
 				<input value={form.hook} maxLength={40} enterKeyHint="done" onChange={(e) => set('hook', e.target.value)} />
@@ -160,26 +175,6 @@ export const ProductForm: React.FC<Props> = ({form, setForm, template}) => {
 				)}
 				<small>Tip: leave it empty and add a trending sound inside TikTok / Shopee Video when posting.</small>
 				{musicError ? <p className="hint error">{musicError}</p> : null}
-			</div>
-
-			<h2>4 · Template</h2>
-			<div className="templates">
-				{TEMPLATES.map((t) => (
-					<button
-						key={t.id}
-						type="button"
-						className={`template${t.id === form.templateId ? ' on' : ''}`}
-						onClick={() => set('templateId', t.id)}
-						aria-pressed={t.id === form.templateId}
-					>
-						<strong>{t.name}</strong>
-						<span className="th">{t.nameTh}</span>
-						<span>{t.description}</span>
-						<span className="meta">
-							{t.width}×{t.height} · {t.minImages}–{t.maxImages} photos
-						</span>
-					</button>
-				))}
 			</div>
 		</>
 	);

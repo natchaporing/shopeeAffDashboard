@@ -1,16 +1,13 @@
 import type {ProductImage} from '../schema';
+import {PACE, type Timing} from '../style';
 
 /**
  * Timeline planning for the Multi-angle Slideshow template. Pure functions so the
  * same numbers drive the live preview, the render, and the unit tests.
  */
 
-export const TIMING = {
-	hookFrames: 60, // 2.0s: cover image + hook text
-	shotFrames: 45, // 1.5s per gallery shot
-	endFrames: 90, // 3.0s: price + call to action
-	minGalleryShots: 3,
-} as const;
+/** Default ("normal" pace) timing: 2s hook, 1.5s per shot, 3s end card. */
+export const TIMING = {...PACE.normal, minGalleryShots: 3} as const;
 
 export type Zoom = {
 	from: number;
@@ -52,7 +49,7 @@ const DETAIL_FOCI: Array<[number, number]> = [
  * than `minGalleryShots` gallery images exist, pad with zoomed-in detail shots so
  * the video never feels like one static picture.
  */
-export function planSlideshow(images: ProductImage[]): SlideshowPlan {
+export function planSlideshow(images: ProductImage[], timing: Timing = PACE.normal): SlideshowPlan {
 	if (images.length === 0) throw new Error('planSlideshow needs at least one image');
 	const cover = images[0];
 
@@ -75,11 +72,11 @@ export function planSlideshow(images: ProductImage[]): SlideshowPlan {
 		kind: 'hook',
 		image: cover,
 		from: t,
-		duration: TIMING.hookFrames,
+		duration: timing.hookFrames,
 		zoom: {from: 1.0, to: 1.08, originX: 50, originY: 50},
 		enterFrom: 0,
 	});
-	t += TIMING.hookFrames;
+	t += timing.hookFrames;
 
 	gallery.forEach((g, idx) => {
 		const zoomIn = idx % 2 === 0;
@@ -92,11 +89,11 @@ export function planSlideshow(images: ProductImage[]): SlideshowPlan {
 			kind: g.detail ? 'detail' : 'gallery',
 			image: g.image,
 			from: t,
-			duration: TIMING.shotFrames,
+			duration: timing.shotFrames,
 			zoom,
 			enterFrom: idx % 2 === 0 ? 1 : -1,
 		});
-		t += TIMING.shotFrames;
+		t += timing.shotFrames;
 	});
 
 	const endFrom = t;
@@ -104,15 +101,15 @@ export function planSlideshow(images: ProductImage[]): SlideshowPlan {
 		kind: 'end',
 		image: cover,
 		from: t,
-		duration: TIMING.endFrames,
+		duration: timing.endFrames,
 		zoom: {from: 1.0, to: 1.0, originX: 50, originY: 50},
 		enterFrom: 0,
 	});
-	t += TIMING.endFrames;
+	t += timing.endFrames;
 
 	return {shots, durationInFrames: t, endFrom};
 }
 
-export function slideshowDuration(images: ProductImage[]): number {
-	return planSlideshow(images.length ? images : [{src: 'placeholder'}]).durationInFrames;
+export function slideshowDuration(images: ProductImage[], timing: Timing = PACE.normal): number {
+	return planSlideshow(images.length ? images : [{src: 'placeholder'}], timing).durationInFrames;
 }

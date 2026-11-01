@@ -7,6 +7,7 @@ import {productVideoSchema} from '../src/remotion/schema';
 import {deleteOldFiles, rateLimit} from '../src/server/guards';
 import {JobQueue, QueueFullError, type RenderFn} from '../src/server/jobs';
 import {EMPTY_FORM, parseNumber, reviveForm, toInput} from '../src/web/form';
+import {BUILT_IN_TEMPLATES} from '../src/shared/templates';
 
 const props = productVideoSchema.parse({
 	platform: 'shopee',
@@ -34,7 +35,7 @@ describe('job queue', () => {
 			fs.writeFileSync(outputLocation, 'mp4');
 		};
 		const q = new JobQueue({dataDir, outputDir: dataDir, render, toAbsolute: (s) => `http://x${s}`, maxQueued: 5});
-		const job = q.enqueue('multi-angle-slideshow', props);
+		const job = q.enqueue('multi-angle-slideshow', 'slideshow', props);
 		await until(() => q.get(job.id)?.status === 'done');
 		assert.deepEqual(seen, ['http://x/uploads/a.jpg']);
 		assert.equal(q.get(job.id)?.videoUrl, `/outputs/${job.id}.mp4`);
@@ -63,10 +64,10 @@ describe('job queue', () => {
 			throw new Error('boom');
 		};
 		const q = new JobQueue({dataDir, outputDir: dataDir, render, toAbsolute: (s) => s, maxQueued: 1});
-		const first = q.enqueue('t', props); // starts rendering right away
+		const first = q.enqueue('t', 'slideshow', props); // starts rendering right away
 		await until(() => q.get(first.id)?.status === 'rendering');
-		q.enqueue('t', props); // waits in the queue
-		assert.throws(() => q.enqueue('t', props), QueueFullError);
+		q.enqueue('t', 'slideshow', props); // waits in the queue
+		assert.throws(() => q.enqueue('t', 'slideshow', props), QueueFullError);
 		release();
 		await until(() => q.get(first.id)?.status === 'failed');
 		assert.equal(q.get(first.id)?.error, 'boom');
@@ -124,15 +125,28 @@ describe('web form', () => {
 		const revived = reviveForm({platform: 'lazada', title: 'x', images: [{id: 'a', src: '/uploads/a.jpg'}, {bad: true}], templateId: 'gone'});
 		assert.equal(revived.platform, 'lazada');
 		assert.equal(revived.images.length, 1);
-		assert.equal(revived.templateId, EMPTY_FORM.templateId);
+		assert.equal(revived.templateId, 'gone', 'kept: custom templates load from the server after the draft');
+		assert.equal(reviveForm({templateId: 42}).templateId, EMPTY_FORM.templateId);
 		assert.equal(revived.cta, EMPTY_FORM.cta);
 	});
 
-	it('builds valid props from a filled form', () => {
-		const input = toInput({...EMPTY_FORM, title: 'สินค้า', price: '1,290', sold: '12.7', images: [{id: 'a', src: '/uploads/a.jpg', width: 1, height: 1, name: 'a'}]});
+	it('builds valid props from a filled form, with the template style', () => {
+		const flash = BUILT_IN_TEMPLATES.find((t) => t.id === 'flash-sale')!;
+		const input = toInput({...EMPTY_FORM, title: 'สินค้า', price: '1,290', sold: '12.7', images: [{id: 'a', src: '/uploads/a.jpg', width: 1, height: 1, name: 'a'}]}, flash);
 		const parsed = productVideoSchema.safeParse(input);
 		assert.ok(parsed.success);
 		assert.equal(input.price, 1290);
 		assert.equal(input.sold, 13);
+		assert.equal(parsed.success && parsed.data.style.ribbon, 'FLASH SALE');
+	});
+
+	it('only sends the clip to clip templates', () => {
+		const clip = {src: '/uploads/c.mp4', name: 'c.mp4', durationInSeconds: 5, keepAudio: true};
+		const form = {...EMPTY_FORM, clip};
+		const own = BUILT_IN_TEMPLATES.find((t) => t.id === 'own-clip')!;
+		const classic = BUILT_IN_TEMPLATES[0];
+		assert.equal(toInput(form, own).clip?.src, '/uploads/c.mp4');
+		assert.equal(toInput(form, classic).clip, undefined);
+		assert.equal(reviveForm({clip: {src: 'x'}}).clip, undefined, 'clip without duration is dropped');
 	});
 });

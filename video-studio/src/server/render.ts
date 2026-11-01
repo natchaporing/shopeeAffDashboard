@@ -27,15 +27,16 @@ export function getServeUrl(force = false): Promise<string> {
 }
 
 export type RenderOptions = {
-	templateId: string;
+	/** Remotion composition id = engine id ("slideshow" | "clip") */
+	compositionId: string;
 	props: ProductVideoProps;
 	outputLocation: string;
 	onProgress?: (progress: number) => void;
 };
 
-export async function renderVideo({templateId, props, outputLocation, onProgress}: RenderOptions): Promise<void> {
+export async function renderVideo({compositionId, props, outputLocation, onProgress}: RenderOptions): Promise<void> {
 	const serveUrl = await getServeUrl(process.env.REBUNDLE === '1');
-	const composition = await selectComposition({serveUrl, id: templateId, inputProps: props, browserExecutable});
+	const composition = await selectComposition({serveUrl, id: compositionId, inputProps: props, browserExecutable});
 	await renderMedia({
 		serveUrl,
 		composition,
@@ -50,9 +51,9 @@ export async function renderVideo({templateId, props, outputLocation, onProgress
 }
 
 /** Single frame as PNG; used by the sample script and for thumbnails. */
-export async function renderFrame(opts: {templateId: string; props: ProductVideoProps; frame: number; output: string}): Promise<void> {
+export async function renderFrame(opts: {compositionId: string; props: ProductVideoProps; frame: number; output: string}): Promise<void> {
 	const serveUrl = await getServeUrl();
-	const composition = await selectComposition({serveUrl, id: opts.templateId, inputProps: opts.props, browserExecutable});
+	const composition = await selectComposition({serveUrl, id: opts.compositionId, inputProps: opts.props, browserExecutable});
 	await renderStill({
 		serveUrl,
 		composition,
