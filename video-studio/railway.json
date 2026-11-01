@@ -3,7 +3,7 @@
   "build": {
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile",
-    "watchPatterns": ["video-studio/**"]
+    "watchPatterns": ["/video-studio/**"]
   },
   "deploy": {
     "healthcheckPath": "/api/health",
