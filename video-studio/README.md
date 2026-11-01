@@ -120,6 +120,7 @@ It then shows up in the web gallery, the Studio, and server-side validation.
 | `RETENTION_DAYS` | `7` | uploads and videos older than this are deleted hourly |
 | `MAX_QUEUED` | `5` | videos allowed to wait in line; more get "try again in a minute" |
 | `REMOTION_BROWSER_EXECUTABLE` | unset | use an existing Chrome Headless Shell instead of Remotion's |
+| `RENDER_SELFTEST` | on | at startup, render one sample frame and log `render self-test ok` / `FAILED` (proves the renderer works in the container); `0` turns it off |
 
 ## Phase 0 limits (by design)
 

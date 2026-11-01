@@ -1,12 +1,14 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
 import multer from 'multer';
+import {productVideoSchema} from '../remotion/schema';
 import {TEMPLATES} from '../remotion/templates/registry';
 import {deleteOldFiles, rateLimit} from './guards';
 import {JobQueue, QueueFullError} from './jobs';
-import {ROOT, getServeUrl, renderVideo} from './render';
+import {ROOT, getServeUrl, renderFrame, renderVideo} from './render';
 import {validateJobRequest} from './validate';
 
 const PORT = Number(process.env.PORT || 3000);
@@ -165,10 +167,39 @@ function sweep() {
 sweep();
 setInterval(sweep, 60 * 60_000).unref();
 
+/**
+ * Render one frame of the sample product at startup. Proves the headless browser and
+ * its system libraries work in this container (logged as ok / FAILED) and warms the
+ * browser so the first real render starts faster. RENDER_SELFTEST=0 turns it off.
+ */
+async function renderSelfTest() {
+	const started = Date.now();
+	const props = productVideoSchema.parse({
+		platform: 'shopee',
+		title: 'self-test',
+		hook: 'ทดสอบ',
+		price: 289,
+		originalPrice: 590,
+		images: [{src: `http://127.0.0.1:${PORT}/samples/product-1.jpg`}],
+	});
+	const output = path.join(os.tmpdir(), 'video-studio-selftest.png');
+	await renderFrame({templateId: TEMPLATES[0].id, props, frame: 0, output});
+	const bytes = fs.statSync(output).size;
+	fs.rmSync(output, {force: true});
+	return {ms: Date.now() - started, bytes};
+}
+
 app.listen(PORT, () => {
 	console.log(`video-studio listening on http://localhost:${PORT} (${isProd ? 'production' : 'dev'}), data in ${DATA_DIR}`);
 	// Warm the Remotion bundle so the first render doesn't wait for it.
 	getServeUrl()
-		.then(() => console.log('remotion bundle ready'))
+		.then(() => {
+			console.log('remotion bundle ready');
+			if (process.env.RENDER_SELFTEST === '0') return;
+			return renderSelfTest().then(
+				({ms, bytes}) => console.log(`render self-test ok: frame rendered in ${ms}ms (${bytes} bytes)`),
+				(err) => console.error('render self-test FAILED', err),
+			);
+		})
 		.catch((err) => console.error('remotion bundle failed', err));
 });
