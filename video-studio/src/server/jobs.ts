@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type {ProductVideoProps} from '../remotion/schema';
 import {buildCaption} from '../shared/caption';
+import type {RightsRecord} from '../shared/rights';
 
 export type JobStatus = 'queued' | 'rendering' | 'done' | 'failed';
 
@@ -19,6 +20,8 @@ export type Job = {
 	videoUrl?: string;
 	caption: string;
 	error?: string;
+	/** the user's photo-permission confirmation for this video (kept as a record) */
+	rights?: RightsRecord;
 };
 
 export type RenderFn = (opts: {
@@ -56,7 +59,7 @@ export class JobQueue {
 		this.load();
 	}
 
-	enqueue(templateId: string, compositionId: string, props: ProductVideoProps): Job {
+	enqueue(templateId: string, compositionId: string, props: ProductVideoProps, rights?: RightsRecord): Job {
 		if (this.queue.length >= this.opts.maxQueued) {
 			throw new QueueFullError('Too many videos waiting. Try again in a minute.');
 		}
@@ -69,6 +72,7 @@ export class JobQueue {
 			progress: 0,
 			createdAt: new Date().toISOString(),
 			caption: buildCaption(props),
+			rights,
 		};
 		this.jobs.set(job.id, job);
 		this.queue.push(job.id);

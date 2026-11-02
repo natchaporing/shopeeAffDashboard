@@ -84,6 +84,23 @@ poll        →                            GET  /api/jobs/:id  → progress, MP4
 * Frame 0 of the video already shows the product, hook and deal price, because apps
   often use the first frame as the cover.
 
+## Photo permission
+
+Photos copied from a shop's listing usually belong to the seller or brand. Under **Photos**
+the Create page shows a warning and a required checkbox (English + Thai):
+
+> I took these photos and clips myself, or the shop / brand that owns them gave me
+> permission to use them in my videos.
+
+* **Generate stays locked until it is ticked.** The server checks it too (`rights` in
+  `POST /api/jobs`), so it can't be skipped by calling the API directly.
+* The tick covers the exact photos and clip present when it was ticked: adding, removing or
+  swapping a photo or the clip clears it (reordering doesn't). It survives a reload.
+* Each video's job record (`DATA_DIR/jobs/<id>.json`) keeps the statement, its version and
+  the time it was confirmed (`rights`). The wording lives in `src/shared/rights.ts`; changing
+  it means bumping `version`, which asks everyone to confirm again.
+* This is a confirmation and a record, not a legal check: the app can't know who owns a photo.
+
 ## Templates
 
 **Template = engine (code) + style (data) + optional master prompt (data).**

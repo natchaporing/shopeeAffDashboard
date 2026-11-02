@@ -6,7 +6,7 @@ import {productVideoSchema, type ProductVideoProps} from '../remotion/schema';
 import {buildCaption} from '../shared/caption';
 import {BUILT_IN_TEMPLATES, type VideoTemplate} from '../shared/templates';
 import {createJob, getJob, listJobs, listTemplates, type JobView} from './api';
-import {EMPTY_FORM, SAMPLE_FORM, reviveForm, toInput, type Form} from './form';
+import {EMPTY_FORM, SAMPLE_FORM, reviveForm, rightsConfirmed, toInput, type Form} from './form';
 import {readStored, useMediaQuery, writeStored} from './hooks';
 import {JobResult} from './JobResult';
 import {ProductForm} from './ProductForm';
@@ -62,6 +62,7 @@ export const App: React.FC = () => {
 	const props: ProductVideoProps | null = parsed.success ? parsed.data : null;
 	const problems = parsed.success ? [] : friendlyIssues(parsed.error);
 	if (props && engine.usesClip && !props.clip) problems.push(template.masterPrompt ? 'Upload the AI clip' : 'Upload your clip');
+	if (props && !rightsConfirmed(form)) problems.push('Tick the photo permission box (under Photos)');
 	const canGenerate = Boolean(props) && problems.length === 0;
 	const rendering = job?.status === 'queued' || job?.status === 'rendering';
 
@@ -120,7 +121,7 @@ export const App: React.FC = () => {
 		if (!props || !canGenerate) return;
 		setSubmitError(null);
 		try {
-			setJob(await createJob(template.id, props));
+			setJob(await createJob(template.id, props, rightsConfirmed(form)));
 			refreshHistory();
 		} catch (err) {
 			setSubmitError(err instanceof Error ? err.message : String(err));

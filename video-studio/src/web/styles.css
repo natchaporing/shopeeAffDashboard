@@ -1094,3 +1094,37 @@ button.danger {
 .editor-actions .primary {
 	flex: 1 1 200px;
 }
+
+/* ------------------------------------------------------- photo permission */
+
+.rights {
+	margin: 14px 0 4px;
+	padding: 12px 14px;
+	border-radius: 12px;
+	border: 1px solid #f1d28a;
+	background: #fff8e6;
+}
+.rights.ok {
+	border-color: #bfe3c9;
+	background: #f1faf3;
+}
+.rights-warning {
+	margin: 0 0 10px;
+	font-size: 13.5px;
+	line-height: 1.45;
+	color: #6b4d00;
+}
+.rights.ok .rights-warning {
+	color: #2c5b38;
+}
+.rights-check {
+	margin: 0;
+	font-size: 14px;
+}
+.rights-check small {
+	display: block;
+	margin-top: 2px;
+}
+.rights-check input:disabled + span {
+	opacity: 0.55;
+}

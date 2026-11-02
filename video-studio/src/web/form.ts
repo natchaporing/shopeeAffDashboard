@@ -1,4 +1,5 @@
 import type {ProductVideoInput} from '../remotion/schema';
+import {mediaFingerprint} from '../shared/rights';
 import {BUILT_IN_TEMPLATES, type VideoTemplate} from '../shared/templates';
 import type {UploadedImage} from './ImageUploader';
 
@@ -31,6 +32,8 @@ export type Form = {
 	/** AI templates: product described in English for the video model, and option picks */
 	productEn: string;
 	choices: Record<string, string>;
+	/** media fingerprint at the moment the permission box was ticked ('' = not ticked) */
+	rightsFor: string;
 };
 
 export const DEFAULT_TEMPLATE_ID = BUILT_IN_TEMPLATES[0].id;
@@ -51,6 +54,7 @@ export const EMPTY_FORM: Form = {
 	templateId: DEFAULT_TEMPLATE_ID,
 	productEn: '',
 	choices: {},
+	rightsFor: '',
 };
 
 export const SAMPLE_IMAGES: UploadedImage[] = [1, 2, 3, 4].map((n) => ({
@@ -74,6 +78,15 @@ export const SAMPLE_FORM: Form = {
 };
 
 export const HOOKS = ['ของมันต้องมี!', 'ลดแรงมาก!', 'ของดีบอกต่อ', 'ใครยังไม่มีต้องดู', 'ปังมาก!'];
+
+export function formFingerprint(f: Pick<Form, 'images' | 'clip'>): string {
+	return mediaFingerprint({images: f.images, clipSrc: f.clip?.src});
+}
+
+/** The tick only counts for the photos / clip that were there when it was ticked. */
+export function rightsConfirmed(f: Form): boolean {
+	return f.rightsFor !== '' && f.rightsFor === formFingerprint(f);
+}
 
 /** "1,290" / "฿1290" / " 1290 " -> 1290; "" -> undefined; junk -> NaN (fails validation). */
 export function parseNumber(s: string): number | undefined {
@@ -144,5 +157,6 @@ export function reviveForm(raw: unknown): Form {
 			r.choices && typeof r.choices === 'object'
 				? Object.fromEntries(Object.entries(r.choices).filter(([, v]) => typeof v === 'string'))
 				: {},
+		rightsFor: str(r.rightsFor, ''),
 	};
 }

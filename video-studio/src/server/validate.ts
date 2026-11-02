@@ -2,15 +2,17 @@ import {z} from 'zod';
 import {ENGINES} from '../remotion/engines';
 import {productVideoSchema, type ProductVideoProps} from '../remotion/schema';
 import {isAllowedAssetPath} from '../shared/links';
+import {RIGHTS, type RightsRecord} from '../shared/rights';
 import type {VideoTemplate} from '../shared/templates';
 import type {VideoInfo} from './media';
 
 const jobRequestSchema = z.object({
 	templateId: z.string(),
 	props: z.unknown(),
+	rights: z.object({confirmed: z.boolean(), version: z.string()}).optional(),
 });
 
-export type ValidJobRequest = {templateId: string; compositionId: string; props: ProductVideoProps};
+export type ValidJobRequest = {templateId: string; compositionId: string; props: ProductVideoProps; rights: RightsRecord};
 
 export type JobDeps = {
 	getTemplate: (id: string) => VideoTemplate | undefined;
@@ -42,6 +44,11 @@ export function validateJobRequest(body: unknown, deps: JobDeps): {ok: true; val
 	const props = parsed.data;
 	const errors: string[] = [];
 
+	// The user must confirm they may use these photos / clips (seller photos belong to the shop).
+	const rights = outer.data.rights;
+	if (!rights?.confirmed) errors.push('Tick the photo permission box: confirm you took these photos yourself or have the owner’s permission.');
+	else if (rights.version !== RIGHTS.version) errors.push('The photo permission text has changed. Please tick the box again.');
+
 	if (props.images.length < engine.minImages) errors.push(`${template.name} needs at least ${engine.minImages} photo(s)`);
 	if (props.images.length > engine.maxImages) errors.push(`${template.name} takes at most ${engine.maxImages} photos`);
 	for (const img of props.images) {
@@ -59,5 +66,14 @@ export function validateJobRequest(body: unknown, deps: JobDeps): {ok: true; val
 		}
 	}
 
-	return errors.length ? {ok: false, errors} : {ok: true, value: {templateId: template.id, compositionId: engine.id, props}};
+	if (errors.length) return {ok: false, errors};
+	return {
+		ok: true,
+		value: {
+			templateId: template.id,
+			compositionId: engine.id,
+			props,
+			rights: {confirmed: true, version: RIGHTS.version, statement: RIGHTS.statement, confirmedAt: new Date().toISOString()},
+		},
+	};
 }

@@ -6,6 +6,7 @@ import {uploadFile} from './api';
 import {ClipSection} from './ClipSection';
 import {HOOKS, type Form} from './form';
 import {ImageUploader} from './ImageUploader';
+import {RightsCheck} from './RightsCheck';
 import {TemplatePicker} from './TemplatePicker';
 
 type Props = {
@@ -115,6 +116,7 @@ export const ProductForm: React.FC<Props> = ({form, setForm, template, templates
 				recommended={template.engine === 'slideshow' ? 4 : 1}
 			/>
 			{template.engine === 'clip' ? <p className="hint">Clip templates use the first photo for the end card{template.masterPrompt ? ' and as the AI reference' : ''}.</p> : null}
+			<RightsCheck form={form} setForm={setForm} />
 
 			<h2>{next()} · Template</h2>
 			<TemplatePicker templates={templates} selectedId={template.id} platform={form.platform} onSelect={(id) => set('templateId', id)} />

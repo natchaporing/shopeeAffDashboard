@@ -135,6 +135,7 @@ export const ClipSection: React.FC<Props> = ({form, setForm, template}) => {
 								</a>
 							) : null}
 						</div>
+						<small>The reference photo goes to your AI tool too, so the photo permission above applies to it.</small>
 					</div>
 				</>
 			) : (

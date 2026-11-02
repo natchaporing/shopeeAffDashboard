@@ -206,8 +206,8 @@ app.post('/api/jobs', jobLimit, (req, res) => {
 		return;
 	}
 	try {
-		const {templateId, compositionId, props} = result.value;
-		const job = queue.enqueue(templateId, compositionId, props);
+		const {templateId, compositionId, props, rights} = result.value;
+		const job = queue.enqueue(templateId, compositionId, props, rights);
 		res.status(202).json(publicJob(job.id));
 	} catch (err) {
 		if (err instanceof QueueFullError) res.status(429).json({error: err.message});
@@ -241,6 +241,7 @@ function publicJob(id: string) {
 		caption: job.caption,
 		error: job.error,
 		title: job.props.title,
+		rightsConfirmedAt: job.rights?.confirmedAt,
 	};
 }
 

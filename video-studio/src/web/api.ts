@@ -1,4 +1,5 @@
 import type {ProductVideoProps} from '../remotion/schema';
+import {RIGHTS} from '../shared/rights';
 import type {VideoTemplate, VideoTemplateInput} from '../shared/templates';
 import {readStored, writeStored} from './hooks';
 
@@ -24,6 +25,7 @@ export type JobView = {
 	caption: string;
 	error?: string;
 	title: string;
+	rightsConfirmedAt?: string;
 };
 
 export type ServerConfig = {adminKeyRequired: boolean; aiProvider: string};
@@ -69,12 +71,12 @@ export function uploadFile(blob: Blob, filename: string, onProgress?: (fraction:
 	});
 }
 
-export async function createJob(templateId: string, props: ProductVideoProps): Promise<JobView> {
+export async function createJob(templateId: string, props: ProductVideoProps, rightsConfirmed: boolean): Promise<JobView> {
 	return json(
 		await fetch('/api/jobs', {
 			method: 'POST',
 			headers: {'Content-Type': 'application/json'},
-			body: JSON.stringify({templateId, props}),
+			body: JSON.stringify({templateId, props, rights: {confirmed: rightsConfirmed, version: RIGHTS.version}}),
 		}),
 	);
 }

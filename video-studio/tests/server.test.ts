@@ -6,7 +6,7 @@ import {describe, it} from 'node:test';
 import {productVideoSchema} from '../src/remotion/schema';
 import {deleteOldFiles, rateLimit} from '../src/server/guards';
 import {JobQueue, QueueFullError, type RenderFn} from '../src/server/jobs';
-import {EMPTY_FORM, parseNumber, reviveForm, toInput} from '../src/web/form';
+import {EMPTY_FORM, formFingerprint, parseNumber, reviveForm, rightsConfirmed, toInput} from '../src/web/form';
 import {BUILT_IN_TEMPLATES} from '../src/shared/templates';
 
 const props = productVideoSchema.parse({
@@ -35,7 +35,8 @@ describe('job queue', () => {
 			fs.writeFileSync(outputLocation, 'mp4');
 		};
 		const q = new JobQueue({dataDir, outputDir: dataDir, render, toAbsolute: (s) => `http://x${s}`, maxQueued: 5});
-		const job = q.enqueue('multi-angle-slideshow', 'slideshow', props);
+		const rights = {confirmed: true as const, version: 'v1', statement: 'ok', confirmedAt: new Date().toISOString()};
+		const job = q.enqueue('multi-angle-slideshow', 'slideshow', props, rights);
 		await until(() => q.get(job.id)?.status === 'done');
 		assert.deepEqual(seen, ['http://x/uploads/a.jpg']);
 		assert.equal(q.get(job.id)?.videoUrl, `/outputs/${job.id}.mp4`);
@@ -43,6 +44,7 @@ describe('job queue', () => {
 
 		const reloaded = new JobQueue({dataDir, outputDir: dataDir, render, toAbsolute: (s) => s, maxQueued: 5});
 		assert.equal(reloaded.get(job.id)?.status, 'done');
+		assert.deepEqual(reloaded.get(job.id)?.rights, rights, 'permission record is kept with the video');
 	});
 
 	it('marks jobs interrupted by a restart as failed', () => {
@@ -138,6 +140,16 @@ describe('web form', () => {
 		assert.equal(input.price, 1290);
 		assert.equal(input.sold, 13);
 		assert.equal(parsed.success && parsed.data.style.ribbon, 'FLASH SALE');
+	});
+
+	it('permission tick only counts for the media it was given for', () => {
+		const images = [{id: 'a', src: '/uploads/a.jpg', width: 1, height: 1, name: 'a'}];
+		const ticked = {...EMPTY_FORM, images, rightsFor: formFingerprint({images})};
+		assert.ok(rightsConfirmed(ticked));
+		assert.ok(!rightsConfirmed({...ticked, images: [...images, {...images[0], id: 'b', src: '/uploads/b.jpg'}]}), 'new photo clears it');
+		assert.ok(!rightsConfirmed({...ticked, clip: {src: '/uploads/c.mp4', name: 'c', durationInSeconds: 3, keepAudio: true}}), 'new clip clears it');
+		assert.ok(!rightsConfirmed({...EMPTY_FORM, images}), 'not ticked');
+		assert.equal(reviveForm({rightsFor: ticked.rightsFor, images}).rightsFor, ticked.rightsFor, 'survives a reload');
 	});
 
 	it('only sends the clip to clip templates', () => {
